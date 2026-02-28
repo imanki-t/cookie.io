@@ -1,0 +1,5 @@
+{
+  "name": "cookie.io",
+  "description": "Photo tourism app that recognizes landmarks, fetches their history, and provides an AR-style narrated audio guide.",
+  "requestFramePermissions": ["camera", "microphone", "geolocation"]
+}
