@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bold, Italic, Strikethrough, Code, List, ListOrdered,
-  Quote, Minus, Eye, Edit2, Columns, Tag, X, Pin,
-  AlignLeft, Copy, Check, Maximize2, Minimize2, Undo, Redo,
-  Image, Download, FileText, Clock, ArrowRight,
+  Quote, Minus, Eye, Edit2, Columns, X, Pin,
+  Copy, Check, Maximize2, Minimize2,
+  Image, Download,
 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -14,20 +14,30 @@ import { ViewMode, Note } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { formatDistanceToNow } from 'date-fns';
 
-// ─── Note color options ──────────────────────────────────────
+/* ── Helpers ── */
 const NOTE_COLORS = [null,'#f59e0b','#ef4444','#10b981','#3b82f6','#8b5cf6','#f97316','#06b6d4','#ec4899'];
 
-// ─── SVG icons ───────────────────────────────────────────────
-const H1Icon = () => <span style={{ fontSize: 10, fontWeight: 900, fontFamily: 'var(--font-mono)' }}>H1</span>;
-const H2Icon = () => <span style={{ fontSize: 10, fontWeight: 700, fontFamily: 'var(--font-mono)' }}>H2</span>;
-const H3Icon = () => <span style={{ fontSize: 10, fontWeight: 700, fontFamily: 'var(--font-mono)' }}>H3</span>;
+const H1Icon = () => <span style={{ fontSize: 9, fontWeight: 900, fontFamily: 'var(--font-mono)', letterSpacing: 0 }}>H1</span>;
+const H2Icon = () => <span style={{ fontSize: 9, fontWeight: 700, fontFamily: 'var(--font-mono)', letterSpacing: 0 }}>H2</span>;
+const H3Icon = () => <span style={{ fontSize: 9, fontWeight: 700, fontFamily: 'var(--font-mono)', letterSpacing: 0 }}>H3</span>;
+
 const PinSVG = ({ filled }: { filled: boolean }) => (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/>
+  <svg width="12" height="12" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="17" x2="12" y2="22"/>
+    <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/>
   </svg>
 );
 
-// ─── Tag input ───────────────────────────────────────────────
+/* ── Time-based greeting ── */
+function getGreeting(): { greeting: string; sub: string } {
+  const h = new Date().getHours();
+  if (h >= 5  && h < 12) return { greeting: 'Good morning',   sub: 'What will you write today?' };
+  if (h >= 12 && h < 17) return { greeting: 'Good afternoon', sub: 'Keep the momentum going.' };
+  if (h >= 17 && h < 21) return { greeting: 'Good evening',   sub: 'Reflect and write freely.' };
+  return                         { greeting: 'Good night',     sub: 'Write before you sleep.' };
+}
+
+/* ── Tag input ── */
 function TagInput({ tags, onChange }: { tags: string[]; onChange: (t: string[]) => void }) {
   const [input, setInput] = useState('');
   const add = useCallback(() => {
@@ -38,15 +48,16 @@ function TagInput({ tags, onChange }: { tags: string[]; onChange: (t: string[]) 
   const remove = useCallback((tag: string) => onChange(tags.filter((t) => t !== tag)), [tags, onChange]);
 
   return (
-    <div className="flex items-center gap-1.5 flex-wrap px-10 pb-3">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accents-4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/>
+    <div className="tag-input-area">
+      <svg width="10" height="10" viewBox="0 0 12 12" fill="none" style={{ color: 'var(--accents-4)', flexShrink: 0 }}>
+        <path d="M11 6.5L7.5 10a1 1 0 01-1.4 0L.5 4.4A1 1 0 01.5 3L4 .5a1 1 0 011.4 0l5 5a1 1 0 010 1z" stroke="currentColor" strokeWidth="1.1"/>
+        <circle cx="3.5" cy="3.5" r="0.8" fill="currentColor"/>
       </svg>
       {tags.map((tag) => (
-        <span key={tag} className="tag-pill text-[10px]">
+        <span key={tag} className="tag-pill accent">
           {tag}
-          <button onClick={() => remove(tag)} className="ml-0.5 opacity-60 hover:opacity-100">
-            <X size={9} />
+          <button onClick={() => remove(tag)} style={{ marginLeft: 2, opacity: 0.6, background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'inherit' }}>
+            <X size={8} />
           </button>
         </span>
       ))}
@@ -59,95 +70,88 @@ function TagInput({ tags, onChange }: { tags: string[]; onChange: (t: string[]) 
         }}
         onBlur={add}
         placeholder="Add tag…"
-        className="bg-transparent outline-none text-[11px] placeholder:opacity-40 min-w-[60px]"
-        style={{ color: 'var(--accents-5)', fontFamily: 'var(--font-sans)' }}
+        className="tag-input"
       />
     </div>
   );
 }
 
-// ─── Recent Notes Home Screen ─────────────────────────────────
-function RecentNotesHome() {
+/* ── Home screen ── */
+function HomeScreen() {
   const { state, dispatch, createNote } = useApp();
   const [recentNotes, setRecentNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
+  const { greeting, sub } = getGreeting();
 
   useEffect(() => {
-    api.notes.recent().then((notes) => { setRecentNotes(notes); setLoading(false); }).catch(() => setLoading(false));
+    api.notes.recent()
+      .then((notes) => { setRecentNotes(notes); setLoading(false); })
+      .catch(() => setLoading(false));
   }, [state.notes.length]);
 
   const totalWords = state.notes.reduce((a, n) => a + (n.wordCount || 0), 0);
 
   return (
-    <div className="empty-state px-8 py-12 overflow-y-auto">
+    <div className="home-screen">
       <motion.div
-        initial={{ opacity: 0, y: 16 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.16,1,0.3,1] }}
-        className="w-full max-w-2xl mx-auto"
+        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+        style={{ width: '100%', maxWidth: 600 }}
       >
-        {/* Hero */}
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium mb-4"
-            style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', color: 'var(--accent)' }}>
-            <span className="w-1.5 h-1.5 rounded-full animate-[pulse-dot_2s_ease_infinite]" style={{ background: 'var(--accent)' }} />
-            {state.wsConnected ? 'Live sync active' : 'Connecting…'}
-          </div>
-          <h1 className="text-3xl font-bold mb-2" style={{ letterSpacing: '-0.04em' }}>
-            Good to see you
-          </h1>
-          <p className="text-sm" style={{ color: 'var(--accents-5)' }}>
-            Select a note or create a new one
-          </p>
+        {/* Greeting */}
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+          <h1 className="home-greeting">{greeting}</h1>
+          <p className="home-greeting-sub">{sub}</p>
         </div>
 
         {/* Stats */}
         {state.notes.length > 0 && (
-          <div className="flex items-center justify-center gap-3 mb-8 flex-wrap">
+          <div className="home-stats-row">
             {[
-              { label: 'Notes', value: state.notes.length },
+              { label: 'Notes',   value: state.notes.length },
               { label: 'Folders', value: state.folders.length },
-              { label: 'Words', value: totalWords.toLocaleString() },
-              { label: 'Tags', value: state.tags.length },
+              { label: 'Words',   value: totalWords.toLocaleString() },
+              { label: 'Tags',    value: state.tags.length },
             ].map(({ label, value }) => (
               <div key={label} className="stat-chip">
-                <span className="font-semibold" style={{ color: 'var(--fg)' }}>{value}</span>
+                <span className="stat-chip-val">{value}</span>
                 <span>{label}</span>
               </div>
             ))}
           </div>
         )}
 
-        {/* Recent notes grid */}
+        {/* Recent notes */}
         {!loading && recentNotes.length > 0 && (
-          <div>
-            <div className="divider-label mb-4">Recent Notes</div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 stagger-children">
+          <>
+            <div className="home-section-label">Recent</div>
+            <div className="home-notes-grid stagger">
               {recentNotes.map((note) => (
                 <motion.button
                   key={note._id}
-                  className="recent-note-card"
+                  className="home-note-card animate-fade-up"
                   onClick={() => dispatch({ type: 'SET_ACTIVE_NOTE', id: note._id })}
                   whileHover={{ y: -2 }}
-                  transition={{ duration: 0.15 }}
+                  transition={{ duration: 0.12 }}
                 >
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <span className="text-sm font-semibold truncate leading-tight" style={{ letterSpacing: '-0.01em' }}>
-                      {note.title || 'Untitled Note'}
-                    </span>
-                    {note.color && <div className="note-color-dot shrink-0 mt-1" style={{ background: note.color }} />}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+                    <span className="home-note-title">{note.title || 'Untitled Note'}</span>
+                    {note.color && (
+                      <div style={{ width: 7, height: 7, borderRadius: '50%', background: note.color, flexShrink: 0, marginTop: 4 }} />
+                    )}
                   </div>
                   {note.content && (
-                    <p className="text-xs leading-relaxed line-clamp-2 mb-2" style={{ color: 'var(--accents-5)' }}>
-                      {note.content.replace(/#{1,6}\s/g, '').replace(/[*_`\[\]()>]/g, '').slice(0, 80)}
+                    <p className="home-note-snippet">
+                      {note.content.replace(/#{1,6}\s/g, '').replace(/[*_`\[\]()>~]/g, '').slice(0, 90)}
                     </p>
                   )}
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono" style={{ color: 'var(--accents-4)' }}>
+                  <div className="home-note-footer">
+                    <span style={{ fontSize: 9.5, fontFamily: 'var(--font-mono)', color: 'var(--accents-4)' }}>
                       {formatDistanceToNow(new Date(note.updatedAt), { addSuffix: true })}
                     </span>
                     {note.wordCount > 0 && (
-                      <span className="text-[10px] font-mono" style={{ color: 'var(--accents-4)' }}>
+                      <span style={{ fontSize: 9.5, fontFamily: 'var(--font-mono)', color: 'var(--accents-4)' }}>
                         {note.wordCount}w
                       </span>
                     )}
@@ -155,18 +159,30 @@ function RecentNotesHome() {
                 </motion.button>
               ))}
             </div>
+          </>
+        )}
+
+        {/* Empty state */}
+        {!loading && state.notes.length === 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 0', textAlign: 'center' }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--accents-3)', marginBottom: 12 }}>
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+              <polyline points="14 2 14 8 20 8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+              <line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+              <line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+            </svg>
+            <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--accents-5)', marginBottom: 4 }}>No notes yet</p>
+            <p style={{ fontSize: 11, color: 'var(--accents-4)', marginBottom: 16 }}>Create your first note to get started</p>
           </div>
         )}
 
         {/* CTA */}
-        <div className="text-center mt-8">
-          <button
-            onClick={() => createNote()}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-85 hover:-translate-y-0.5 active:translate-y-0"
-            style={{ background: 'var(--fg)', color: 'var(--bg)' }}
-          >
-            Create new note
-            <ArrowRight size={14} />
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
+          <button className="home-cta" onClick={() => createNote()}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            </svg>
+            New note
           </button>
         </div>
       </motion.div>
@@ -174,19 +190,18 @@ function RecentNotesHome() {
   );
 }
 
-// ─── Main Editor ─────────────────────────────────────────────
+/* ── Main Editor ── */
 export function Editor() {
-  const { state, dispatch, updateNote, deleteNote, activeNote } = useApp();
-  const [title, setTitle]       = useState('');
-  const [content, setContent]   = useState('');
-  const [tags, setTags]         = useState<string[]>([]);
+  const { state, dispatch, updateNote, activeNote } = useApp();
+  const [title,    setTitle]    = useState('');
+  const [content,  setContent]  = useState('');
+  const [tags,     setTags]     = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>(state.settings.defaultView);
-  const [saving, setSaving]     = useState(false);
-  const [saved, setSaved]       = useState(false);
+  const [saving,   setSaving]   = useState(false);
+  const [saved,    setSaved]    = useState(false);
   const [colorOpen, setColorOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
-  const [copied, setCopied]     = useState(false);
-  const [isEditorFocused, setIsEditorFocused] = useState(false);
+  const [copied,   setCopied]   = useState(false);
   const [remoteEditors, setRemoteEditors] = useState<Record<string, { name: string; color: string }>>({});
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -195,7 +210,7 @@ export function Editor() {
   const wsTimer     = useRef<ReturnType<typeof setTimeout>>();
   const prevNoteId  = useRef<string | null>(null);
 
-  // Sync from active note
+  /* Sync from active note */
   useEffect(() => {
     if (!activeNote) { setTitle(''); setContent(''); setTags([]); return; }
     if (activeNote._id !== prevNoteId.current) {
@@ -204,11 +219,10 @@ export function Editor() {
       setTags(activeNote.tags    || []);
       prevNoteId.current = activeNote._id;
       socket.joinNote(activeNote._id);
-      setIsEditorFocused(false);
     }
   }, [activeNote]);
 
-  // WebSocket events
+  /* WebSocket events */
   useEffect(() => {
     const off1 = socket.on('note_update', (msg: any) => {
       if (msg.userId === socket.getUserId() || msg.noteId !== activeNote?._id) return;
@@ -228,18 +242,18 @@ export function Editor() {
 
   useEffect(() => () => { socket.leaveNote(); }, [activeNote?._id]);
 
-  // Save & broadcast
+  /* Autosave & broadcast */
   const scheduleSync = useCallback((t: string, c: string, tg: string[]) => {
     clearTimeout(saveTimer.current);
     clearTimeout(wsTimer.current);
-    wsTimer.current = setTimeout(() => socket.sendNoteUpdate(t, c, tg), 250);
+    wsTimer.current  = setTimeout(() => socket.sendNoteUpdate(t, c, tg), 200);
     saveTimer.current = setTimeout(async () => {
       if (!activeNote) return;
       setSaving(true);
       try {
         await updateNote(activeNote._id, { title: t, content: c, tags: tg });
         setSaved(true);
-        setTimeout(() => setSaved(false), 2500);
+        setTimeout(() => setSaved(false), 2200);
       } catch {}
       setSaving(false);
     }, state.settings.autosaveDelay);
@@ -261,38 +275,40 @@ export function Editor() {
     scheduleSync(title, content, newTags);
   }, [title, content, scheduleSync]);
 
-  // ─── Markdown helpers ─────────────────────────────────────
+  /* Markdown helpers */
   const wrap = useCallback((prefix: string, suffix = prefix) => {
     const ta = textareaRef.current; if (!ta) return;
-    const start = ta.selectionStart; const end = ta.selectionEnd;
-    const sel = content.slice(start, end) || 'text';
-    const next = content.slice(0, start) + prefix + sel + suffix + content.slice(end);
-    setContent(next); scheduleSync(title, next, tags);
-    setTimeout(() => { ta.focus(); ta.selectionStart = start + prefix.length; ta.selectionEnd = start + prefix.length + sel.length; }, 0);
+    const { selectionStart: s, selectionEnd: e } = ta;
+    const sel  = content.slice(s, e) || 'text';
+    const next = content.slice(0, s) + prefix + sel + suffix + content.slice(e);
+    setContent(next);
+    scheduleSync(title, next, tags);
+    setTimeout(() => { ta.focus(); ta.selectionStart = s + prefix.length; ta.selectionEnd = s + prefix.length + sel.length; }, 0);
   }, [content, title, tags, scheduleSync]);
 
   const insertLine = useCallback((prefix: string) => {
     const ta = textareaRef.current; if (!ta) return;
-    const start = ta.selectionStart;
-    const lineStart = content.lastIndexOf('\n', start - 1) + 1;
+    const lineStart = content.lastIndexOf('\n', ta.selectionStart - 1) + 1;
     const next = content.slice(0, lineStart) + prefix + content.slice(lineStart);
-    setContent(next); scheduleSync(title, next, tags);
+    setContent(next);
+    scheduleSync(title, next, tags);
     setTimeout(() => { ta.focus(); ta.selectionStart = ta.selectionEnd = lineStart + prefix.length; }, 0);
   }, [content, title, tags, scheduleSync]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Tab') {
       e.preventDefault();
-      const ta = textareaRef.current!;
-      const start = ta.selectionStart;
-      const spaces = ' '.repeat(state.settings.tabSize);
-      const next = content.slice(0, start) + spaces + content.slice(ta.selectionEnd);
-      setContent(next); scheduleSync(title, next, tags);
-      setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + state.settings.tabSize; }, 0);
+      const ta   = textareaRef.current!;
+      const s    = ta.selectionStart;
+      const sp   = ' '.repeat(state.settings.tabSize);
+      const next = content.slice(0, s) + sp + content.slice(ta.selectionEnd);
+      setContent(next);
+      scheduleSync(title, next, tags);
+      setTimeout(() => { ta.selectionStart = ta.selectionEnd = s + state.settings.tabSize; }, 0);
     }
   }, [content, title, tags, state.settings.tabSize, scheduleSync]);
 
-  // ─── Image insertion ──────────────────────────────────────
+  /* Image insert */
   const handleImageInsert = useCallback(async (file: File) => {
     if (!activeNote) return;
     const reader = new FileReader();
@@ -302,17 +318,15 @@ export function Editor() {
       const mime    = file.type;
       try {
         const result = await api.notes.addImage(activeNote._id, base64, mime, file.name);
-        const imageMarkdown = `\n![${file.name}](${result.url})\n`;
-        const ta = textareaRef.current;
-        const pos = ta ? ta.selectionStart : content.length;
-        const next = content.slice(0, pos) + imageMarkdown + content.slice(pos);
+        const md  = `\n![${file.name}](${result.url})\n`;
+        const pos = textareaRef.current?.selectionStart ?? content.length;
+        const next = content.slice(0, pos) + md + content.slice(pos);
         setContent(next);
         scheduleSync(title, next, tags);
       } catch {
-        // Fallback: embed base64 directly
-        const imageMarkdown = `\n![${file.name}](${dataUrl})\n`;
+        const md  = `\n![${file.name}](${dataUrl})\n`;
         const pos = textareaRef.current?.selectionStart ?? content.length;
-        const next = content.slice(0, pos) + imageMarkdown + content.slice(pos);
+        const next = content.slice(0, pos) + md + content.slice(pos);
         setContent(next);
         scheduleSync(title, next, tags);
       }
@@ -321,8 +335,7 @@ export function Editor() {
   }, [activeNote, content, title, tags, scheduleSync]);
 
   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    const items = e.clipboardData.items;
-    for (const item of Array.from(items)) {
+    for (const item of Array.from(e.clipboardData.items)) {
       if (item.type.startsWith('image/')) {
         e.preventDefault();
         const file = item.getAsFile();
@@ -337,36 +350,34 @@ export function Editor() {
     if (files.length) { e.preventDefault(); files.forEach(handleImageInsert); }
   }, [handleImageInsert]);
 
-  // ─── Download as .txt ─────────────────────────────────────
+  /* Download */
   const downloadTxt = useCallback(() => {
     if (!activeNote) return;
-    const text = `${title}\n${'='.repeat(title.length || 10)}\n\n${content}`;
+    const text = `${title}\n${'─'.repeat(Math.min(title.length || 10, 40))}\n\n${content}`;
     const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
-    a.href     = url;
-    a.download = `${title || 'note'}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    a.href = url; a.download = `${title || 'note'}.txt`;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
   }, [activeNote, title, content]);
 
   const copyContent = useCallback(() => {
     navigator.clipboard.writeText(content);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), 1800);
   }, [content]);
 
   const wordCount = useMemo(() => content.trim().split(/\s+/).filter(Boolean).length, [content]);
   const charCount = content.length;
+  const lineCount = content.split('\n').length;
 
-  if (!activeNote) return <RecentNotesHome />;
+  if (!activeNote) return <HomeScreen />;
 
   const toolbarGroups = [
     [
-      { icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>, title: 'Undo', action: () => document.execCommand('undo') },
-      { icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>, title: 'Redo', action: () => document.execCommand('redo') },
+      { icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>, title: 'Undo', action: () => document.execCommand('undo') },
+      { icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>, title: 'Redo', action: () => document.execCommand('redo') },
     ],
     [
       { icon: <H1Icon />, title: 'Heading 1', action: () => insertLine('# ') },
@@ -374,81 +385,78 @@ export function Editor() {
       { icon: <H3Icon />, title: 'Heading 3', action: () => insertLine('### ') },
     ],
     [
-      { icon: <Bold size={12} />,          title: 'Bold',          action: () => wrap('**') },
-      { icon: <Italic size={12} />,        title: 'Italic',        action: () => wrap('_') },
-      { icon: <Strikethrough size={12} />, title: 'Strike',        action: () => wrap('~~') },
-      { icon: <Code size={12} />,          title: 'Inline code',   action: () => wrap('`') },
+      { icon: <Bold size={11} />,          title: 'Bold',        action: () => wrap('**') },
+      { icon: <Italic size={11} />,        title: 'Italic',      action: () => wrap('_') },
+      { icon: <Strikethrough size={11} />, title: 'Strikethrough', action: () => wrap('~~') },
+      { icon: <Code size={11} />,          title: 'Inline code', action: () => wrap('`') },
     ],
     [
-      { icon: <List size={12} />,        title: 'Bullet list',   action: () => insertLine('- ') },
-      { icon: <ListOrdered size={12} />, title: 'Numbered list', action: () => insertLine('1. ') },
-      { icon: <Quote size={12} />,       title: 'Blockquote',    action: () => insertLine('> ') },
-      { icon: <Minus size={12} />,       title: 'Divider',       action: () => { const n = content + '\n\n---\n\n'; setContent(n); scheduleSync(title, n, tags); } },
+      { icon: <List size={11} />,        title: 'Bullet list',   action: () => insertLine('- ') },
+      { icon: <ListOrdered size={11} />, title: 'Numbered list', action: () => insertLine('1. ') },
+      { icon: <Quote size={11} />,       title: 'Blockquote',    action: () => insertLine('> ') },
+      { icon: <Minus size={11} />,       title: 'Divider',       action: () => { const n = content + '\n\n---\n\n'; setContent(n); scheduleSync(title, n, tags); } },
     ],
     [
-      { icon: <Image size={12} />, title: 'Insert image', action: () => imageInputRef.current?.click() },
+      { icon: <Image size={11} />, title: 'Insert image', action: () => imageInputRef.current?.click() },
     ],
   ];
 
   return (
-    <div className={`flex flex-col h-full overflow-hidden ${fullscreen ? 'fixed inset-0 z-[300] bg-[var(--bg)]' : ''}`}
-      style={{ background: 'var(--bg)' }}>
-
-      {/* Hidden image input */}
+    <div
+      className="editor-wrapper"
+      style={fullscreen ? { position: 'fixed', inset: 0, zIndex: 400, background: 'var(--bg)' } : {}}
+    >
+      {/* Hidden file input */}
       <input
         ref={imageInputRef}
         type="file"
         accept="image/*"
-        className="hidden"
+        style={{ display: 'none' }}
         onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageInsert(f); e.target.value = ''; }}
       />
 
       {/* ── Top bar ── */}
-      <div className="flex items-center gap-2 px-3 py-2 shrink-0" style={{ borderBottom: '1px solid var(--accents-2)', background: 'var(--bg)' }}>
+      <div className="editor-topbar">
         {/* Save state */}
-        <div className="flex items-center gap-1.5 mr-auto min-w-0">
+        <div className="save-indicator" style={{ marginRight: 'auto', gap: 5 }}>
           {saving && (
-            <div className="save-indicator">
+            <>
               <div className="save-dot saving" />
-              <span>Saving</span>
-            </div>
+              <span>Saving…</span>
+            </>
           )}
           {saved && !saving && (
             <motion.div
-              initial={{ opacity: 0, x: -4 }}
+              initial={{ opacity: 0, x: -3 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0 }}
-              className="save-indicator"
+              style={{ display: 'flex', alignItems: 'center', gap: 5 }}
             >
               <div className="save-dot saved" />
-              <span>Saved</span>
+              <span style={{ color: 'var(--success)' }}>Saved</span>
             </motion.div>
           )}
           {!saving && !saved && (
-            <div className="save-indicator">
-              <div className="save-dot" style={{ background: 'var(--accents-3)' }} />
-              <span style={{ opacity: 0.5 }}>Auto-save on</span>
-            </div>
+            <span style={{ color: 'var(--accents-4)', opacity: 0.6, fontSize: 10, fontFamily: 'var(--font-mono)' }}>
+              Auto-save on
+            </span>
           )}
 
           {/* Remote editors */}
-          {Object.values(remoteEditors).length > 0 && (
-            <div className="flex items-center gap-1 ml-2">
-              {Object.values(remoteEditors).map((e, i) => (
-                <div key={i} className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] text-white font-semibold"
-                  style={{ background: e.color }}>
-                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-[pulse-dot_1s_ease_infinite]" />
-                  {e.name}
-                </div>
-              ))}
+          {Object.values(remoteEditors).map((e, i) => (
+            <div key={i} className="remote-editor-pill" style={{ background: e.color }}>
+              <span className="remote-dot" />
+              {e.name}
             </div>
-          )}
+          ))}
         </div>
 
         {/* Word count */}
         {state.settings.showWordCount && (
-          <div className="hidden sm:flex items-center gap-2">
-            <span className="text-[10px] font-mono" style={{ color: 'var(--accents-4)' }}>{wordCount.toLocaleString()} words</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginRight: 4 }} className="hidden-mobile">
+            <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--accents-4)' }}>
+              {wordCount.toLocaleString()}w
+            </span>
             <div className="wc-bar">
               <div className="wc-bar-fill" style={{ width: `${Math.min((wordCount / 500) * 100, 100)}%` }} />
             </div>
@@ -465,30 +473,39 @@ export function Editor() {
         </button>
 
         {/* Note color */}
-        <div className="relative">
-          <button className="toolbar-btn" onClick={() => setColorOpen((v) => !v)} title="Note color">
-            <div className="w-3 h-3 rounded-full border border-[var(--accents-3)]"
-              style={{ background: activeNote.color || 'transparent' }} />
+        <div style={{ position: 'relative' }}>
+          <button
+            className="toolbar-btn"
+            onClick={() => setColorOpen((v) => !v)}
+            title="Note color"
+          >
+            <div style={{
+              width: 11, height: 11,
+              borderRadius: '50%',
+              background: activeNote.color || 'transparent',
+              border: activeNote.color ? 'none' : '1px solid var(--accents-4)',
+            }} />
           </button>
           <AnimatePresence>
             {colorOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setColorOpen(false)} />
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.94, y: -4 }}
+                  className="color-picker-popup"
+                  initial={{ opacity: 0, scale: 0.94, y: -3 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.94 }}
-                  className="absolute right-0 top-full mt-1 z-50 p-2 flex flex-wrap gap-1.5 rounded-xl"
-                  style={{ background: 'var(--bg)', border: '1px solid var(--accents-2)', boxShadow: 'var(--shadow-lg)', width: 160 }}
+                  transition={{ duration: 0.12 }}
+                  style={{ zIndex: 500 }}
                 >
                   {NOTE_COLORS.map((c, i) => (
                     <button
                       key={i}
-                      className="color-swatch"
+                      className={`color-swatch ${c === activeNote.color ? 'active' : ''}`}
                       style={{ background: c || 'transparent', borderColor: c === activeNote.color ? 'var(--fg)' : 'var(--accents-2)' }}
                       onClick={() => { updateNote(activeNote._id, { color: c }); setColorOpen(false); }}
                     >
-                      {!c && <X size={12} style={{ margin: 'auto', color: 'var(--accents-4)' }} />}
+                      {!c && <X size={10} style={{ margin: 'auto', color: 'var(--accents-4)' }} />}
                     </button>
                   ))}
                 </motion.div>
@@ -499,24 +516,24 @@ export function Editor() {
 
         {/* Copy */}
         <button className={`toolbar-btn ${copied ? 'active' : ''}`} onClick={copyContent} title="Copy content">
-          {copied ? <Check size={12} /> : <Copy size={12} />}
+          {copied ? <Check size={11} /> : <Copy size={11} />}
         </button>
 
-        {/* Download .txt */}
+        {/* Download */}
         <button className="toolbar-btn" onClick={downloadTxt} title="Download as .txt">
-          <Download size={12} />
+          <Download size={11} />
         </button>
 
         {/* View mode */}
         <div className="view-switcher">
           {([
-            { mode: 'edit'    as ViewMode, icon: <Edit2 size={11} />, title: 'Edit' },
-            { mode: 'preview' as ViewMode, icon: <Eye size={11} />,   title: 'Preview' },
-            { mode: 'split'   as ViewMode, icon: <Columns size={11} />, title: 'Split' },
+            { mode: 'edit'    as ViewMode, icon: <Edit2    size={10} />, title: 'Edit' },
+            { mode: 'preview' as ViewMode, icon: <Eye      size={10} />, title: 'Preview' },
+            { mode: 'split'   as ViewMode, icon: <Columns  size={10} />, title: 'Split' },
           ]).map((v) => (
             <button
               key={v.mode}
-              className={`view-switcher-btn ${viewMode === v.mode ? 'active' : ''}`}
+              className={`view-btn ${viewMode === v.mode ? 'active' : ''}`}
               title={v.title}
               onClick={() => setViewMode(v.mode)}
             >
@@ -526,12 +543,16 @@ export function Editor() {
         </div>
 
         {/* Fullscreen */}
-        <button className="toolbar-btn" onClick={() => setFullscreen((v) => !v)} title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
-          {fullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+        <button
+          className="toolbar-btn"
+          onClick={() => setFullscreen((v) => !v)}
+          title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+        >
+          {fullscreen ? <Minimize2 size={11} /> : <Maximize2 size={11} />}
         </button>
       </div>
 
-      {/* ── Toolbar ── */}
+      {/* ── Markdown toolbar ── */}
       {(viewMode === 'edit' || viewMode === 'split') && (
         <div className="editor-toolbar">
           {toolbarGroups.map((group, gi) => (
@@ -553,9 +574,10 @@ export function Editor() {
       )}
 
       {/* ── Title ── */}
-      <div className="shrink-0" style={{
+      <div style={{
         borderBottom: '1px solid var(--accents-2)',
-        borderLeft: activeNote.color ? `3px solid ${activeNote.color}` : undefined,
+        borderLeft: activeNote.color ? `2px solid ${activeNote.color}` : undefined,
+        flexShrink: 0,
       }}>
         <input
           className="note-title-input"
@@ -563,51 +585,41 @@ export function Editor() {
           value={title}
           onChange={handleTitleChange}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') { e.preventDefault(); textareaRef.current?.focus(); setIsEditorFocused(true); }
+            if (e.key === 'Enter') { e.preventDefault(); textareaRef.current?.focus(); }
           }}
-          onClick={() => setIsEditorFocused(true)}
         />
         <TagInput tags={tags} onChange={handleTagChange} />
       </div>
 
       {/* ── Content area ── */}
-      <div className="flex-1 overflow-hidden flex min-h-0">
+      <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
         {/* Edit pane */}
         {(viewMode === 'edit' || viewMode === 'split') && (
-          <div className={`relative flex-1 overflow-hidden ${viewMode === 'split' ? '' : ''}`}
-            style={viewMode === 'split' ? { borderRight: '1px solid var(--accents-2)' } : {}}>
-
-            {/* Click to edit overlay when not focused */}
-            {!isEditorFocused && viewMode === 'edit' && (
-              <div
-                className="absolute inset-0 z-10 cursor-text flex items-start"
-                onClick={() => { setIsEditorFocused(true); setTimeout(() => textareaRef.current?.focus(), 0); }}
-              >
-                {!content && (
-                  <p className="px-10 pt-8 text-sm select-none pointer-events-none" style={{ color: 'var(--accents-4)' }}>
-                    Click to start writing… Markdown supported
-                  </p>
-                )}
-              </div>
-            )}
-
+          <div
+            style={{
+              flex: 1,
+              overflow: 'hidden',
+              position: 'relative',
+              ...(viewMode === 'split' ? { borderRight: '1px solid var(--accents-2)' } : {}),
+            }}
+          >
             <textarea
               ref={textareaRef}
               className="editor-textarea"
               style={{
                 fontSize: `${state.settings.fontSize}px`,
                 lineHeight: state.settings.lineHeight,
-                fontFamily: state.settings.fontFamily === 'geist-mono' ? 'Geist Mono, monospace'
-                  : state.settings.fontFamily === 'serif' ? 'Georgia, serif'
-                  : state.settings.fontFamily === 'cursive' ? 'cursive'
+                fontFamily:
+                  state.settings.fontFamily === 'geist-mono' ? 'Geist Mono, monospace'
+                  : state.settings.fontFamily === 'serif'     ? 'Georgia, serif'
+                  : state.settings.fontFamily === 'cursive'   ? 'cursive'
                   : 'Geist Sans, sans-serif',
                 spellCheck: state.settings.spellCheck,
               } as any}
-              placeholder={isEditorFocused ? 'Start writing… Markdown is supported' : ''}
+              placeholder="Start writing… Markdown supported"
               value={content}
               onChange={handleContentChange}
               onKeyDown={handleKeyDown}
-              onFocus={() => setIsEditorFocused(true)}
               onPaste={handlePaste}
               onDrop={handleDrop}
               onDragOver={(e) => e.preventDefault()}
@@ -621,34 +633,39 @@ export function Editor() {
 
         {/* Preview pane */}
         {(viewMode === 'preview' || viewMode === 'split') && (
-          <div className={`${viewMode === 'split' ? 'flex-1' : 'w-full'} overflow-y-auto`}>
-            <div className="preview-prose"
-              style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: state.settings.lineHeight }}>
-              {content ? (
-                <Markdown remarkPlugins={[remarkGfm]}>{content}</Markdown>
-              ) : (
-                <p className="italic" style={{ color: 'var(--accents-4)' }}>Nothing to preview yet.</p>
-              )}
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            <div
+              className="preview-prose"
+              style={{
+                fontSize: `${state.settings.fontSize}px`,
+                lineHeight: state.settings.lineHeight,
+              }}
+            >
+              {content
+                ? <Markdown remarkPlugins={[remarkGfm]}>{content}</Markdown>
+                : <p style={{ color: 'var(--accents-4)', fontStyle: 'italic', fontSize: 13 }}>Nothing to preview yet.</p>
+              }
             </div>
           </div>
         )}
       </div>
 
       {/* ── Footer ── */}
-      <div className="flex items-center justify-between px-4 py-1.5 shrink-0"
-        style={{ borderTop: '1px solid var(--accents-2)' }}>
-        <div className="flex items-center gap-3 text-[10px] font-mono" style={{ color: 'var(--accents-4)' }}>
+      <div className="editor-footer">
+        <div className="editor-footer-stat">
           <span>Markdown</span>
-          <span>·</span>
+          <span className="editor-footer-sep" />
           <span>{wordCount.toLocaleString()} words</span>
-          <span>·</span>
+          <span className="editor-footer-sep" />
           <span>{charCount.toLocaleString()} chars</span>
-          {content.split('\n').length > 1 && <>
-            <span>·</span>
-            <span>{content.split('\n').length} lines</span>
-          </>}
+          {lineCount > 1 && (
+            <>
+              <span className="editor-footer-sep" />
+              <span>{lineCount} lines</span>
+            </>
+          )}
         </div>
-        <div className="flex items-center gap-2 text-[10px] font-mono" style={{ color: 'var(--accents-4)' }}>
+        <div className="editor-footer-stat">
           {state.collaborators.length > 0 && (
             <span style={{ color: 'var(--accent)' }}>{state.collaborators.length + 1} editing</span>
           )}
