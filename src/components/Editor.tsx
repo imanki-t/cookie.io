@@ -1,63 +1,52 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Bold, Italic, Underline, Strikethrough, Code, Link2,
-  List, ListOrdered, Quote, Minus, Heading1, Heading2, Heading3,
-  Eye, Edit2, Columns, Save, Tag, X, Pin, Palette,
-  AlignLeft, Clock, Hash, Copy, Check, MoreHorizontal,
-  Maximize2, Minimize2, Undo, Redo,
+  Bold, Italic, Strikethrough, Code, List, ListOrdered,
+  Quote, Minus, Eye, Edit2, Columns, Tag, X, Pin,
+  AlignLeft, Copy, Check, Maximize2, Minimize2, Undo, Redo,
+  Image, Download, FileText, Clock, ArrowRight,
 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useApp } from '../context/AppContext';
 import { socket } from '../services/socket';
+import { api } from '../services/api';
 import { ViewMode, Note } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
+import { formatDistanceToNow } from 'date-fns';
 
 // ─── Note color options ──────────────────────────────────────
-const NOTE_COLORS = [
-  null, '#f59e0b', '#ef4444', '#10b981', '#3b82f6',
-  '#8b5cf6', '#f97316', '#06b6d4', '#ec4899',
-];
+const NOTE_COLORS = [null,'#f59e0b','#ef4444','#10b981','#3b82f6','#8b5cf6','#f97316','#06b6d4','#ec4899'];
 
-// ─── Toolbar button helper ───────────────────────────────────
-function ToolBtn({
-  icon, title, active = false, onClick,
-}: {
-  icon: React.ReactNode; title: string; active?: boolean; onClick: () => void;
-}) {
-  return (
-    <button
-      onMouseDown={(e) => { e.preventDefault(); onClick(); }}
-      className={`toolbar-btn ${active ? 'active' : ''}`}
-      title={title}
-    >
-      {icon}
-    </button>
-  );
-}
+// ─── SVG icons ───────────────────────────────────────────────
+const H1Icon = () => <span style={{ fontSize: 10, fontWeight: 900, fontFamily: 'var(--font-mono)' }}>H1</span>;
+const H2Icon = () => <span style={{ fontSize: 10, fontWeight: 700, fontFamily: 'var(--font-mono)' }}>H2</span>;
+const H3Icon = () => <span style={{ fontSize: 10, fontWeight: 700, fontFamily: 'var(--font-mono)' }}>H3</span>;
+const PinSVG = ({ filled }: { filled: boolean }) => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/>
+  </svg>
+);
 
 // ─── Tag input ───────────────────────────────────────────────
-function TagInput({ tags, onChange }: { tags: string[]; onChange: (tags: string[]) => void }) {
+function TagInput({ tags, onChange }: { tags: string[]; onChange: (t: string[]) => void }) {
   const [input, setInput] = useState('');
-
   const add = useCallback(() => {
     const t = input.trim().toLowerCase().replace(/[^a-z0-9\-_]/g, '');
     if (t && !tags.includes(t)) onChange([...tags, t]);
     setInput('');
   }, [input, tags, onChange]);
-
-  const remove = useCallback((tag: string) => {
-    onChange(tags.filter((t) => t !== tag));
-  }, [tags, onChange]);
+  const remove = useCallback((tag: string) => onChange(tags.filter((t) => t !== tag)), [tags, onChange]);
 
   return (
-    <div className="flex items-center gap-1.5 flex-wrap">
-      <Hash className="h-3.5 w-3.5 text-accents-4 shrink-0" />
+    <div className="flex items-center gap-1.5 flex-wrap px-10 pb-3">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--accents-4)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/>
+      </svg>
       {tags.map((tag) => (
-        <span key={tag} className="tag-pill">
+        <span key={tag} className="tag-pill text-[10px]">
           {tag}
-          <button onClick={() => remove(tag)} className="ml-0.5 opacity-70 hover:opacity-100">
-            <X className="h-2.5 w-2.5" />
+          <button onClick={() => remove(tag)} className="ml-0.5 opacity-60 hover:opacity-100">
+            <X size={9} />
           </button>
         </span>
       ))}
@@ -70,69 +59,116 @@ function TagInput({ tags, onChange }: { tags: string[]; onChange: (tags: string[
         }}
         onBlur={add}
         placeholder="Add tag…"
-        className="bg-transparent outline-none text-xs text-accents-5 placeholder:text-accents-3 min-w-[70px] w-auto"
+        className="bg-transparent outline-none text-[11px] placeholder:opacity-40 min-w-[60px]"
+        style={{ color: 'var(--accents-5)', fontFamily: 'var(--font-sans)' }}
       />
     </div>
   );
 }
 
-// ─── Word count bar ──────────────────────────────────────────
-function WordCountBar({ count, target = 500 }: { count: number; target?: number }) {
-  const pct = Math.min((count / target) * 100, 100);
-  return (
-    <div className="word-count-bar w-20">
-      <div className="word-count-bar-fill" style={{ width: `${pct}%` }} />
-    </div>
-  );
-}
+// ─── Recent Notes Home Screen ─────────────────────────────────
+function RecentNotesHome() {
+  const { state, dispatch, createNote } = useApp();
+  const [recentNotes, setRecentNotes] = useState<Note[]>([]);
+  const [loading, setLoading] = useState(true);
 
-// ─── Cursor indicator ─────────────────────────────────────────
-function CursorIndicator({ name, color, position }: { name: string; color: string; position: number }) {
-  return (
-    <div
-      className="absolute pointer-events-none z-20 flex items-start"
-      style={{ top: 0, left: 0, transform: `translateX(${position}px)` }}
-    >
-      <div className="h-4 w-0.5 rounded-full" style={{ background: color }} />
-      <div
-        className="text-[9px] font-semibold text-white px-1.5 py-0.5 rounded-full whitespace-nowrap -mt-4"
-        style={{ background: color }}
-      >
-        {name}
-      </div>
-    </div>
-  );
-}
+  useEffect(() => {
+    api.notes.recent().then((notes) => { setRecentNotes(notes); setLoading(false); }).catch(() => setLoading(false));
+  }, [state.notes.length]);
 
-// ─── Empty state ─────────────────────────────────────────────
-function EmptyState() {
-  const { createNote, state } = useApp();
+  const totalWords = state.notes.reduce((a, n) => a + (n.wordCount || 0), 0);
+
   return (
-    <div className="flex-1 flex flex-col items-center justify-center h-full text-center px-6">
+    <div className="empty-state px-8 py-12 overflow-y-auto">
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="max-w-sm"
+        transition={{ duration: 0.4, ease: [0.16,1,0.3,1] }}
+        className="w-full max-w-2xl mx-auto"
       >
-        <div
-          className="mx-auto mb-6 h-20 w-20 rounded-2xl flex items-center justify-center text-4xl"
-          style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent-border)' }}
-        >
-          🍪
+        {/* Hero */}
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium mb-4"
+            style={{ background: 'var(--accent-bg)', border: '1px solid var(--accent-border)', color: 'var(--accent)' }}>
+            <span className="w-1.5 h-1.5 rounded-full animate-[pulse-dot_2s_ease_infinite]" style={{ background: 'var(--accent)' }} />
+            {state.wsConnected ? 'Live sync active' : 'Connecting…'}
+          </div>
+          <h1 className="text-3xl font-bold mb-2" style={{ letterSpacing: '-0.04em' }}>
+            Good to see you
+          </h1>
+          <p className="text-sm" style={{ color: 'var(--accents-5)' }}>
+            Select a note or create a new one
+          </p>
         </div>
-        <h2 className="text-2xl font-bold mb-2">cookie<span style={{ color: 'var(--accent)' }}>.io</span></h2>
-        <p className="text-sm text-accents-5 mb-6 leading-relaxed">
-          Select a note to start editing, or create a new one.
-          Real-time collaboration keeps your team in sync.
-        </p>
-        <button
-          onClick={() => createNote()}
-          className="rounded-xl px-6 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90"
-          style={{ background: 'var(--accent)' }}
-        >
-          Create your first note
-        </button>
+
+        {/* Stats */}
+        {state.notes.length > 0 && (
+          <div className="flex items-center justify-center gap-3 mb-8 flex-wrap">
+            {[
+              { label: 'Notes', value: state.notes.length },
+              { label: 'Folders', value: state.folders.length },
+              { label: 'Words', value: totalWords.toLocaleString() },
+              { label: 'Tags', value: state.tags.length },
+            ].map(({ label, value }) => (
+              <div key={label} className="stat-chip">
+                <span className="font-semibold" style={{ color: 'var(--fg)' }}>{value}</span>
+                <span>{label}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Recent notes grid */}
+        {!loading && recentNotes.length > 0 && (
+          <div>
+            <div className="divider-label mb-4">Recent Notes</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 stagger-children">
+              {recentNotes.map((note) => (
+                <motion.button
+                  key={note._id}
+                  className="recent-note-card"
+                  onClick={() => dispatch({ type: 'SET_ACTIVE_NOTE', id: note._id })}
+                  whileHover={{ y: -2 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <span className="text-sm font-semibold truncate leading-tight" style={{ letterSpacing: '-0.01em' }}>
+                      {note.title || 'Untitled Note'}
+                    </span>
+                    {note.color && <div className="note-color-dot shrink-0 mt-1" style={{ background: note.color }} />}
+                  </div>
+                  {note.content && (
+                    <p className="text-xs leading-relaxed line-clamp-2 mb-2" style={{ color: 'var(--accents-5)' }}>
+                      {note.content.replace(/#{1,6}\s/g, '').replace(/[*_`\[\]()>]/g, '').slice(0, 80)}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-mono" style={{ color: 'var(--accents-4)' }}>
+                      {formatDistanceToNow(new Date(note.updatedAt), { addSuffix: true })}
+                    </span>
+                    {note.wordCount > 0 && (
+                      <span className="text-[10px] font-mono" style={{ color: 'var(--accents-4)' }}>
+                        {note.wordCount}w
+                      </span>
+                    )}
+                  </div>
+                </motion.button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* CTA */}
+        <div className="text-center mt-8">
+          <button
+            onClick={() => createNote()}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-85 hover:-translate-y-0.5 active:translate-y-0"
+            style={{ background: 'var(--fg)', color: 'var(--bg)' }}
+          >
+            Create new note
+            <ArrowRight size={14} />
+          </button>
+        </div>
       </motion.div>
     </div>
   );
@@ -150,94 +186,73 @@ export function Editor() {
   const [colorOpen, setColorOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [copied, setCopied]     = useState(false);
-  const [remoteEditors, setRemoteEditors] = useState<Record<string, { name: string; color: string; position: number }>>({});
+  const [isEditorFocused, setIsEditorFocused] = useState(false);
+  const [remoteEditors, setRemoteEditors] = useState<Record<string, { name: string; color: string }>>({});
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const saveTimer   = useRef<ReturnType<typeof setTimeout>>();
   const wsTimer     = useRef<ReturnType<typeof setTimeout>>();
   const prevNoteId  = useRef<string | null>(null);
 
   // Sync from active note
   useEffect(() => {
-    if (!activeNote) {
-      setTitle(''); setContent(''); setTags([]);
-      return;
-    }
+    if (!activeNote) { setTitle(''); setContent(''); setTags([]); return; }
     if (activeNote._id !== prevNoteId.current) {
       setTitle(activeNote.title   || '');
       setContent(activeNote.content || '');
       setTags(activeNote.tags    || []);
       prevNoteId.current = activeNote._id;
-      // Join note room
       socket.joinNote(activeNote._id);
+      setIsEditorFocused(false);
     }
   }, [activeNote]);
 
-  // WebSocket - incoming updates from other users
+  // WebSocket events
   useEffect(() => {
     const off1 = socket.on('note_update', (msg: any) => {
-      if (msg.userId === socket.getUserId()) return;
-      if (msg.noteId !== activeNote?._id) return;
-      setTitle(msg.title   || '');
+      if (msg.userId === socket.getUserId() || msg.noteId !== activeNote?._id) return;
+      setTitle(msg.title || '');
       setContent(msg.content || '');
-      setTags(msg.tags    || []);
+      setTags(msg.tags || []);
     });
     const off2 = socket.on('cursor_update', (msg: any) => {
       if (msg.userId === socket.getUserId()) return;
-      setRemoteEditors((prev) => ({
-        ...prev,
-        [msg.userId]: { name: msg.userName, color: msg.color, position: msg.position },
-      }));
+      setRemoteEditors((prev) => ({ ...prev, [msg.userId]: { name: msg.userName, color: msg.color } }));
     });
     const off3 = socket.on('user_left', (msg: any) => {
-      setRemoteEditors((prev) => {
-        const next = { ...prev };
-        delete next[msg.userId];
-        return next;
-      });
+      setRemoteEditors((prev) => { const n = { ...prev }; delete n[msg.userId]; return n; });
     });
     return () => { off1(); off2(); off3(); };
   }, [activeNote?._id]);
 
-  // Leave note on unmount / change
-  useEffect(() => {
-    return () => { socket.leaveNote(); };
-  }, [activeNote?._id]);
+  useEffect(() => () => { socket.leaveNote(); }, [activeNote?._id]);
 
-  // Save & broadcast changes
-  const scheduleSync = useCallback((newTitle: string, newContent: string, newTags: string[]) => {
+  // Save & broadcast
+  const scheduleSync = useCallback((t: string, c: string, tg: string[]) => {
     clearTimeout(saveTimer.current);
     clearTimeout(wsTimer.current);
-
-    // Broadcast via WebSocket immediately (debounced slightly)
-    wsTimer.current = setTimeout(() => {
-      socket.sendNoteUpdate(newTitle, newContent, newTags);
-    }, 200);
-
-    // Persist to DB
+    wsTimer.current = setTimeout(() => socket.sendNoteUpdate(t, c, tg), 250);
     saveTimer.current = setTimeout(async () => {
       if (!activeNote) return;
       setSaving(true);
       try {
-        await updateNote(activeNote._id, { title: newTitle, content: newContent, tags: newTags });
+        await updateNote(activeNote._id, { title: t, content: c, tags: tg });
         setSaved(true);
-        setTimeout(() => setSaved(false), 2000);
+        setTimeout(() => setSaved(false), 2500);
       } catch {}
-      finally { setSaving(false); }
+      setSaving(false);
     }, state.settings.autosaveDelay);
   }, [activeNote, updateNote, state.settings.autosaveDelay]);
 
   const handleTitleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const v = e.target.value;
-    setTitle(v);
-    scheduleSync(v, content, tags);
+    setTitle(e.target.value);
+    scheduleSync(e.target.value, content, tags);
   }, [content, tags, scheduleSync]);
 
   const handleContentChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const v = e.target.value;
-    setContent(v);
-    scheduleSync(title, v, tags);
-    // Send cursor position
+    setContent(e.target.value);
+    scheduleSync(title, e.target.value, tags);
     socket.sendCursorUpdate(e.target.selectionStart);
   }, [title, tags, scheduleSync]);
 
@@ -246,39 +261,25 @@ export function Editor() {
     scheduleSync(title, content, newTags);
   }, [title, content, scheduleSync]);
 
-  // ─── Markdown toolbar helpers ─────────────────────────────
-  const wrap = useCallback((prefix: string, suffix = prefix, placeholder = 'text') => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    const start  = ta.selectionStart;
-    const end    = ta.selectionEnd;
-    const sel    = content.slice(start, end) || placeholder;
-    const before = content.slice(0, start);
-    const after  = content.slice(end);
-    const next   = `${before}${prefix}${sel}${suffix}${after}`;
-    setContent(next);
-    scheduleSync(title, next, tags);
-    setTimeout(() => {
-      ta.focus();
-      ta.selectionStart = start + prefix.length;
-      ta.selectionEnd   = start + prefix.length + sel.length;
-    }, 0);
+  // ─── Markdown helpers ─────────────────────────────────────
+  const wrap = useCallback((prefix: string, suffix = prefix) => {
+    const ta = textareaRef.current; if (!ta) return;
+    const start = ta.selectionStart; const end = ta.selectionEnd;
+    const sel = content.slice(start, end) || 'text';
+    const next = content.slice(0, start) + prefix + sel + suffix + content.slice(end);
+    setContent(next); scheduleSync(title, next, tags);
+    setTimeout(() => { ta.focus(); ta.selectionStart = start + prefix.length; ta.selectionEnd = start + prefix.length + sel.length; }, 0);
   }, [content, title, tags, scheduleSync]);
 
   const insertLine = useCallback((prefix: string) => {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    const start  = ta.selectionStart;
+    const ta = textareaRef.current; if (!ta) return;
+    const start = ta.selectionStart;
     const lineStart = content.lastIndexOf('\n', start - 1) + 1;
-    const before = content.slice(0, lineStart);
-    const rest   = content.slice(lineStart);
-    const next   = `${before}${prefix}${rest}`;
-    setContent(next);
-    scheduleSync(title, next, tags);
+    const next = content.slice(0, lineStart) + prefix + content.slice(lineStart);
+    setContent(next); scheduleSync(title, next, tags);
     setTimeout(() => { ta.focus(); ta.selectionStart = ta.selectionEnd = lineStart + prefix.length; }, 0);
   }, [content, title, tags, scheduleSync]);
 
-  // ─── Tab key ───────────────────────────────────────────────
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Tab') {
       e.preventDefault();
@@ -286,17 +287,70 @@ export function Editor() {
       const start = ta.selectionStart;
       const spaces = ' '.repeat(state.settings.tabSize);
       const next = content.slice(0, start) + spaces + content.slice(ta.selectionEnd);
-      setContent(next);
-      scheduleSync(title, next, tags);
+      setContent(next); scheduleSync(title, next, tags);
       setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + state.settings.tabSize; }, 0);
     }
   }, [content, title, tags, state.settings.tabSize, scheduleSync]);
 
-  const wordCount = useMemo(() => {
-    return content.trim().split(/\s+/).filter(Boolean).length;
-  }, [content]);
+  // ─── Image insertion ──────────────────────────────────────
+  const handleImageInsert = useCallback(async (file: File) => {
+    if (!activeNote) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const dataUrl = e.target?.result as string;
+      const base64  = dataUrl.split(',')[1];
+      const mime    = file.type;
+      try {
+        const result = await api.notes.addImage(activeNote._id, base64, mime, file.name);
+        const imageMarkdown = `\n![${file.name}](${result.url})\n`;
+        const ta = textareaRef.current;
+        const pos = ta ? ta.selectionStart : content.length;
+        const next = content.slice(0, pos) + imageMarkdown + content.slice(pos);
+        setContent(next);
+        scheduleSync(title, next, tags);
+      } catch {
+        // Fallback: embed base64 directly
+        const imageMarkdown = `\n![${file.name}](${dataUrl})\n`;
+        const pos = textareaRef.current?.selectionStart ?? content.length;
+        const next = content.slice(0, pos) + imageMarkdown + content.slice(pos);
+        setContent(next);
+        scheduleSync(title, next, tags);
+      }
+    };
+    reader.readAsDataURL(file);
+  }, [activeNote, content, title, tags, scheduleSync]);
 
-  const charCount = content.length;
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData.items;
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) handleImageInsert(file);
+        break;
+      }
+    }
+  }, [handleImageInsert]);
+
+  const handleDrop = useCallback((e: React.DragEvent<HTMLTextAreaElement>) => {
+    const files = Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith('image/'));
+    if (files.length) { e.preventDefault(); files.forEach(handleImageInsert); }
+  }, [handleImageInsert]);
+
+  // ─── Download as .txt ─────────────────────────────────────
+  const downloadTxt = useCallback(() => {
+    if (!activeNote) return;
+    const text = `${title}\n${'='.repeat(title.length || 10)}\n\n${content}`;
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `${title || 'note'}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [activeNote, title, content]);
 
   const copyContent = useCallback(() => {
     navigator.clipboard.writeText(content);
@@ -304,62 +358,89 @@ export function Editor() {
     setTimeout(() => setCopied(false), 2000);
   }, [content]);
 
-  if (!activeNote) return <EmptyState />;
+  const wordCount = useMemo(() => content.trim().split(/\s+/).filter(Boolean).length, [content]);
+  const charCount = content.length;
+
+  if (!activeNote) return <RecentNotesHome />;
 
   const toolbarGroups = [
     [
-      { icon: <Undo className="h-3.5 w-3.5" />,      title: 'Undo', action: () => document.execCommand('undo') },
-      { icon: <Redo className="h-3.5 w-3.5" />,      title: 'Redo', action: () => document.execCommand('redo') },
+      { icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>, title: 'Undo', action: () => document.execCommand('undo') },
+      { icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>, title: 'Redo', action: () => document.execCommand('redo') },
     ],
     [
-      { icon: <span className="text-xs font-black">H1</span>, title: 'Heading 1',     action: () => insertLine('# ') },
-      { icon: <span className="text-xs font-bold">H2</span>,  title: 'Heading 2',     action: () => insertLine('## ') },
-      { icon: <span className="text-xs font-bold">H3</span>,  title: 'Heading 3',     action: () => insertLine('### ') },
+      { icon: <H1Icon />, title: 'Heading 1', action: () => insertLine('# ') },
+      { icon: <H2Icon />, title: 'Heading 2', action: () => insertLine('## ') },
+      { icon: <H3Icon />, title: 'Heading 3', action: () => insertLine('### ') },
     ],
     [
-      { icon: <Bold className="h-3.5 w-3.5" />,         title: 'Bold',          action: () => wrap('**') },
-      { icon: <Italic className="h-3.5 w-3.5" />,       title: 'Italic',        action: () => wrap('_') },
-      { icon: <Strikethrough className="h-3.5 w-3.5" />,title: 'Strikethrough', action: () => wrap('~~') },
-      { icon: <Code className="h-3.5 w-3.5" />,         title: 'Inline code',   action: () => wrap('`') },
+      { icon: <Bold size={12} />,          title: 'Bold',          action: () => wrap('**') },
+      { icon: <Italic size={12} />,        title: 'Italic',        action: () => wrap('_') },
+      { icon: <Strikethrough size={12} />, title: 'Strike',        action: () => wrap('~~') },
+      { icon: <Code size={12} />,          title: 'Inline code',   action: () => wrap('`') },
     ],
     [
-      { icon: <List className="h-3.5 w-3.5" />,        title: 'Bullet list',   action: () => insertLine('- ') },
-      { icon: <ListOrdered className="h-3.5 w-3.5" />, title: 'Numbered list', action: () => insertLine('1. ') },
-      { icon: <Quote className="h-3.5 w-3.5" />,       title: 'Blockquote',    action: () => insertLine('> ') },
-      { icon: <Minus className="h-3.5 w-3.5" />,       title: 'Divider',       action: () => { const next = `${content}\n\n---\n\n`; setContent(next); scheduleSync(title, next, tags); } },
+      { icon: <List size={12} />,        title: 'Bullet list',   action: () => insertLine('- ') },
+      { icon: <ListOrdered size={12} />, title: 'Numbered list', action: () => insertLine('1. ') },
+      { icon: <Quote size={12} />,       title: 'Blockquote',    action: () => insertLine('> ') },
+      { icon: <Minus size={12} />,       title: 'Divider',       action: () => { const n = content + '\n\n---\n\n'; setContent(n); scheduleSync(title, n, tags); } },
+    ],
+    [
+      { icon: <Image size={12} />, title: 'Insert image', action: () => imageInputRef.current?.click() },
     ],
   ];
 
   return (
-    <div className={`flex flex-col h-full bg-background overflow-hidden ${fullscreen ? 'fixed inset-0 z-[300]' : ''}`}>
-      {/* ── Header bar ── */}
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-accents-2 bg-background/95 backdrop-blur-sm shrink-0">
-        {/* Status */}
-        <div className="flex items-center gap-2 mr-auto">
+    <div className={`flex flex-col h-full overflow-hidden ${fullscreen ? 'fixed inset-0 z-[300] bg-[var(--bg)]' : ''}`}
+      style={{ background: 'var(--bg)' }}>
+
+      {/* Hidden image input */}
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageInsert(f); e.target.value = ''; }}
+      />
+
+      {/* ── Top bar ── */}
+      <div className="flex items-center gap-2 px-3 py-2 shrink-0" style={{ borderBottom: '1px solid var(--accents-2)', background: 'var(--bg)' }}>
+        {/* Save state */}
+        <div className="flex items-center gap-1.5 mr-auto min-w-0">
           {saving && (
-            <div className="flex items-center gap-1.5 text-xs text-accents-4">
-              <div className="h-3 w-3 border border-accents-3 border-t-accent rounded-full animate-spin" style={{ borderTopColor: 'var(--accent)' }} />
-              Saving…
+            <div className="save-indicator">
+              <div className="save-dot saving" />
+              <span>Saving</span>
             </div>
           )}
           {saved && !saving && (
-            <div className="flex items-center gap-1.5 text-xs text-accents-4 animate-fade-in">
-              <Check className="h-3.5 w-3.5 text-green-400" />
-              Saved
+            <motion.div
+              initial={{ opacity: 0, x: -4 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0 }}
+              className="save-indicator"
+            >
+              <div className="save-dot saved" />
+              <span>Saved</span>
+            </motion.div>
+          )}
+          {!saving && !saved && (
+            <div className="save-indicator">
+              <div className="save-dot" style={{ background: 'var(--accents-3)' }} />
+              <span style={{ opacity: 0.5 }}>Auto-save on</span>
             </div>
           )}
 
-          {/* Collaborators on this note */}
-          {state.collaborators.length > 0 && (
+          {/* Remote editors */}
+          {Object.values(remoteEditors).length > 0 && (
             <div className="flex items-center gap-1 ml-2">
-              {state.collaborators.slice(0, 3).map((c) => (
-                <div key={c.userId} className="collab-avatar text-[9px]" style={{ background: c.color }} title={c.userName}>
-                  {c.userName[0]}
+              {Object.values(remoteEditors).map((e, i) => (
+                <div key={i} className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] text-white font-semibold"
+                  style={{ background: e.color }}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-[pulse-dot_1s_ease_infinite]" />
+                  {e.name}
                 </div>
               ))}
-              {state.collaborators.length > 3 && (
-                <span className="text-[10px] text-accents-4 ml-1">+{state.collaborators.length - 3}</span>
-              )}
             </div>
           )}
         </div>
@@ -367,55 +448,47 @@ export function Editor() {
         {/* Word count */}
         {state.settings.showWordCount && (
           <div className="hidden sm:flex items-center gap-2">
-            <span className="text-[11px] font-mono text-accents-4">{wordCount.toLocaleString()} words</span>
-            <WordCountBar count={wordCount} />
-            <span className="text-[11px] font-mono text-accents-4">{charCount.toLocaleString()} chars</span>
+            <span className="text-[10px] font-mono" style={{ color: 'var(--accents-4)' }}>{wordCount.toLocaleString()} words</span>
+            <div className="wc-bar">
+              <div className="wc-bar-fill" style={{ width: `${Math.min((wordCount / 500) * 100, 100)}%` }} />
+            </div>
           </div>
         )}
 
         {/* Pin */}
         <button
-          onClick={() => updateNote(activeNote._id, { isPinned: !activeNote.isPinned })}
           className={`toolbar-btn ${activeNote.isPinned ? 'active' : ''}`}
+          onClick={() => updateNote(activeNote._id, { isPinned: !activeNote.isPinned })}
           title={activeNote.isPinned ? 'Unpin' : 'Pin'}
         >
-          <Pin className="h-3.5 w-3.5" />
+          <PinSVG filled={activeNote.isPinned} />
         </button>
 
         {/* Note color */}
         <div className="relative">
-          <button
-            onClick={() => setColorOpen((v) => !v)}
-            className="toolbar-btn"
-            title="Note color"
-          >
-            <div
-              className="h-3.5 w-3.5 rounded-full border border-accents-3"
-              style={{ background: activeNote.color || 'transparent' }}
-            />
+          <button className="toolbar-btn" onClick={() => setColorOpen((v) => !v)} title="Note color">
+            <div className="w-3 h-3 rounded-full border border-[var(--accents-3)]"
+              style={{ background: activeNote.color || 'transparent' }} />
           </button>
           <AnimatePresence>
             {colorOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setColorOpen(false)} />
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.93, y: -4 }}
+                  initial={{ opacity: 0, scale: 0.94, y: -4 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.93 }}
-                  className="absolute right-0 top-full mt-1 z-50 p-2 rounded-xl border border-accents-2 bg-background shadow-xl flex gap-1.5 flex-wrap w-48"
+                  exit={{ opacity: 0, scale: 0.94 }}
+                  className="absolute right-0 top-full mt-1 z-50 p-2 flex flex-wrap gap-1.5 rounded-xl"
+                  style={{ background: 'var(--bg)', border: '1px solid var(--accents-2)', boxShadow: 'var(--shadow-lg)', width: 160 }}
                 >
                   {NOTE_COLORS.map((c, i) => (
                     <button
                       key={i}
+                      className="color-swatch"
+                      style={{ background: c || 'transparent', borderColor: c === activeNote.color ? 'var(--fg)' : 'var(--accents-2)' }}
                       onClick={() => { updateNote(activeNote._id, { color: c }); setColorOpen(false); }}
-                      className="h-7 w-7 rounded-lg border-2 transition-transform hover:scale-110"
-                      style={{
-                        background: c || 'transparent',
-                        borderColor: c === activeNote.color ? 'var(--accent)' : 'var(--accents-2)',
-                      }}
-                      title={c || 'No color'}
                     >
-                      {!c && <X className="h-3.5 w-3.5 text-accents-4 m-auto" />}
+                      {!c && <X size={12} style={{ margin: 'auto', color: 'var(--accents-4)' }} />}
                     </button>
                   ))}
                 </motion.div>
@@ -425,24 +498,27 @@ export function Editor() {
         </div>
 
         {/* Copy */}
-        <button onClick={copyContent} className={`toolbar-btn ${copied ? 'active' : ''}`} title="Copy content">
-          {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+        <button className={`toolbar-btn ${copied ? 'active' : ''}`} onClick={copyContent} title="Copy content">
+          {copied ? <Check size={12} /> : <Copy size={12} />}
+        </button>
+
+        {/* Download .txt */}
+        <button className="toolbar-btn" onClick={downloadTxt} title="Download as .txt">
+          <Download size={12} />
         </button>
 
         {/* View mode */}
-        <div className="flex items-center rounded-lg border border-accents-2 bg-accents-1 p-0.5 gap-0.5">
+        <div className="view-switcher">
           {([
-            { mode: 'edit'    as ViewMode, icon: <Edit2 className="h-3.5 w-3.5" />,    title: 'Edit' },
-            { mode: 'preview' as ViewMode, icon: <Eye className="h-3.5 w-3.5" />,      title: 'Preview' },
-            { mode: 'split'   as ViewMode, icon: <Columns className="h-3.5 w-3.5" />, title: 'Split' },
+            { mode: 'edit'    as ViewMode, icon: <Edit2 size={11} />, title: 'Edit' },
+            { mode: 'preview' as ViewMode, icon: <Eye size={11} />,   title: 'Preview' },
+            { mode: 'split'   as ViewMode, icon: <Columns size={11} />, title: 'Split' },
           ]).map((v) => (
             <button
               key={v.mode}
-              onClick={() => setViewMode(v.mode)}
+              className={`view-switcher-btn ${viewMode === v.mode ? 'active' : ''}`}
               title={v.title}
-              className={`flex items-center justify-center rounded-md h-6 w-6 transition-all ${
-                viewMode === v.mode ? 'bg-background text-foreground shadow-sm border border-accents-2' : 'text-accents-5 hover:text-foreground'
-              }`}
+              onClick={() => setViewMode(v.mode)}
             >
               {v.icon}
             </button>
@@ -450,23 +526,26 @@ export function Editor() {
         </div>
 
         {/* Fullscreen */}
-        <button
-          onClick={() => setFullscreen((v) => !v)}
-          className="toolbar-btn"
-          title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-        >
-          {fullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+        <button className="toolbar-btn" onClick={() => setFullscreen((v) => !v)} title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
+          {fullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
         </button>
       </div>
 
       {/* ── Toolbar ── */}
       {(viewMode === 'edit' || viewMode === 'split') && (
-        <div className="flex items-center gap-0.5 px-3 py-1.5 border-b border-accents-2 bg-background overflow-x-auto scrollbar-hide shrink-0">
+        <div className="editor-toolbar">
           {toolbarGroups.map((group, gi) => (
             <React.Fragment key={gi}>
-              {gi > 0 && <div className="toolbar-separator" />}
+              {gi > 0 && <div className="toolbar-sep" />}
               {group.map((btn, bi) => (
-                <ToolBtn key={bi} icon={btn.icon} title={btn.title} onClick={btn.action} />
+                <button
+                  key={bi}
+                  className="toolbar-btn"
+                  title={btn.title}
+                  onMouseDown={(e) => { e.preventDefault(); btn.action(); }}
+                >
+                  {btn.icon}
+                </button>
               ))}
             </React.Fragment>
           ))}
@@ -474,25 +553,44 @@ export function Editor() {
       )}
 
       {/* ── Title ── */}
-      <div className="shrink-0 border-b border-accents-2/50" style={{ borderLeftColor: activeNote.color || 'transparent', borderLeftWidth: activeNote.color ? 3 : 0 }}>
+      <div className="shrink-0" style={{
+        borderBottom: '1px solid var(--accents-2)',
+        borderLeft: activeNote.color ? `3px solid ${activeNote.color}` : undefined,
+      }}>
         <input
-          className="title-input"
+          className="note-title-input"
           placeholder="Untitled Note"
           value={title}
           onChange={handleTitleChange}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); textareaRef.current?.focus(); } }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') { e.preventDefault(); textareaRef.current?.focus(); setIsEditorFocused(true); }
+          }}
+          onClick={() => setIsEditorFocused(true)}
         />
-        {/* Tags */}
-        <div className="px-10 pb-3">
-          <TagInput tags={tags} onChange={handleTagChange} />
-        </div>
+        <TagInput tags={tags} onChange={handleTagChange} />
       </div>
 
       {/* ── Content area ── */}
       <div className="flex-1 overflow-hidden flex min-h-0">
         {/* Edit pane */}
         {(viewMode === 'edit' || viewMode === 'split') && (
-          <div className={`relative flex-1 overflow-hidden ${viewMode === 'split' ? 'border-r border-accents-2' : ''}`}>
+          <div className={`relative flex-1 overflow-hidden ${viewMode === 'split' ? '' : ''}`}
+            style={viewMode === 'split' ? { borderRight: '1px solid var(--accents-2)' } : {}}>
+
+            {/* Click to edit overlay when not focused */}
+            {!isEditorFocused && viewMode === 'edit' && (
+              <div
+                className="absolute inset-0 z-10 cursor-text flex items-start"
+                onClick={() => { setIsEditorFocused(true); setTimeout(() => textareaRef.current?.focus(), 0); }}
+              >
+                {!content && (
+                  <p className="px-10 pt-8 text-sm select-none pointer-events-none" style={{ color: 'var(--accents-4)' }}>
+                    Click to start writing… Markdown supported
+                  </p>
+                )}
+              </div>
+            )}
+
             <textarea
               ref={textareaRef}
               className="editor-textarea"
@@ -504,42 +602,32 @@ export function Editor() {
                   : state.settings.fontFamily === 'cursive' ? 'cursive'
                   : 'Geist Sans, sans-serif',
                 spellCheck: state.settings.spellCheck,
-                overflowY: 'auto',
-                height: '100%',
               } as any}
-              placeholder="Start writing… Markdown is supported ✓"
+              placeholder={isEditorFocused ? 'Start writing… Markdown is supported' : ''}
               value={content}
               onChange={handleContentChange}
               onKeyDown={handleKeyDown}
+              onFocus={() => setIsEditorFocused(true)}
+              onPaste={handlePaste}
+              onDrop={handleDrop}
+              onDragOver={(e) => e.preventDefault()}
               onSelect={(e) => {
                 const ta = e.target as HTMLTextAreaElement;
                 socket.sendCursorUpdate(ta.selectionStart);
               }}
             />
-            {/* Remote cursors (decorative) */}
-            {Object.values(remoteEditors).map((editor) => (
-              <div key={editor.color} className="absolute bottom-4 right-4 text-[10px] text-white px-2 py-1 rounded-full flex items-center gap-1"
-                style={{ background: editor.color }}>
-                <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                {editor.name} is editing
-              </div>
-            ))}
           </div>
         )}
 
         {/* Preview pane */}
         {(viewMode === 'preview' || viewMode === 'split') && (
           <div className={`${viewMode === 'split' ? 'flex-1' : 'w-full'} overflow-y-auto`}>
-            <div
-              className="preview-prose"
-              style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: state.settings.lineHeight }}
-            >
+            <div className="preview-prose"
+              style={{ fontSize: `${state.settings.fontSize}px`, lineHeight: state.settings.lineHeight }}>
               {content ? (
-                <Markdown remarkPlugins={[remarkGfm]}>
-                  {content}
-                </Markdown>
+                <Markdown remarkPlugins={[remarkGfm]}>{content}</Markdown>
               ) : (
-                <p className="text-accents-4 italic">Nothing to preview yet. Start writing in the editor.</p>
+                <p className="italic" style={{ color: 'var(--accents-4)' }}>Nothing to preview yet.</p>
               )}
             </div>
           </div>
@@ -547,29 +635,24 @@ export function Editor() {
       </div>
 
       {/* ── Footer ── */}
-      <div className="flex items-center justify-between px-4 py-1.5 border-t border-accents-2 bg-background/80 shrink-0">
-        <div className="flex items-center gap-3 text-[10px] font-mono text-accents-4">
+      <div className="flex items-center justify-between px-4 py-1.5 shrink-0"
+        style={{ borderTop: '1px solid var(--accents-2)' }}>
+        <div className="flex items-center gap-3 text-[10px] font-mono" style={{ color: 'var(--accents-4)' }}>
           <span>Markdown</span>
           <span>·</span>
           <span>{wordCount.toLocaleString()} words</span>
           <span>·</span>
           <span>{charCount.toLocaleString()} chars</span>
-          {state.settings.showWordCount && content.split('\n').length > 1 && (
-            <>
-              <span>·</span>
-              <span>{content.split('\n').length} lines</span>
-            </>
-          )}
+          {content.split('\n').length > 1 && <>
+            <span>·</span>
+            <span>{content.split('\n').length} lines</span>
+          </>}
         </div>
-        <div className="flex items-center gap-2 text-[10px] text-accents-4">
+        <div className="flex items-center gap-2 text-[10px] font-mono" style={{ color: 'var(--accents-4)' }}>
           {state.collaborators.length > 0 && (
-            <span style={{ color: 'var(--accent)' }}>
-              🟢 {state.collaborators.length + 1} editing
-            </span>
+            <span style={{ color: 'var(--accent)' }}>{state.collaborators.length + 1} editing</span>
           )}
-          <span className="font-mono">
-            {new Date(activeNote.updatedAt).toLocaleDateString()}
-          </span>
+          <span>{new Date(activeNote.updatedAt).toLocaleDateString()}</span>
         </div>
       </div>
     </div>

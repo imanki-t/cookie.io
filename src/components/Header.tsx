@@ -1,53 +1,76 @@
-import React from 'react';
-import {
-  Menu, Search, Settings, Plus, Wifi, WifiOff,
-  ChevronDown, Moon, Sun, Monitor,
-} from 'lucide-react';
-import { Logo } from './Logo';
+import React, { useRef, useState } from 'react';
+import { Menu, Search, Settings, Plus, Moon, Sun, Monitor, ChevronDown, LogOut, User, Lock } from 'lucide-react';
+import { CookieLogoMark } from './Logo';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { Theme } from '../types';
+import { motion, AnimatePresence } from 'motion/react';
 
-const THEMES: { value: Theme; icon: React.ReactNode; label: string }[] = [
-  { value: 'dark',   icon: <Moon className="h-3.5 w-3.5" />,    label: 'Dark'   },
-  { value: 'light',  icon: <Sun className="h-3.5 w-3.5" />,     label: 'Light'  },
-  { value: 'system', icon: <Monitor className="h-3.5 w-3.5" />, label: 'System' },
-];
+// SVG Icons
+const WsIcon = ({ connected }: { connected: boolean }) => (
+  <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+    <circle cx="4" cy="4" r="4" fill={connected ? '#22c55e' : 'var(--accents-4)'} />
+    {connected && <circle cx="4" cy="4" r="4" fill="#22c55e" opacity="0.3">
+      <animate attributeName="r" values="4;7;4" dur="2s" repeatCount="indefinite" />
+      <animate attributeName="opacity" values="0.3;0;0.3" dur="2s" repeatCount="indefinite" />
+    </circle>}
+  </svg>
+);
+
+const ThemeIcons: Record<Theme, React.ReactNode> = {
+  dark:   <Moon size={13} />,
+  light:  <Sun  size={13} />,
+  system: <Monitor size={13} />,
+};
 
 export function Header() {
   const { state, dispatch, createNote } = useApp();
+  const { user, logout }                = useAuth();
+  const [accountOpen, setAccountOpen]   = useState(false);
+  const accountRef = useRef<HTMLDivElement>(null);
 
   const handleNewNote = async () => {
-    const folderId = typeof state.activeFolderId === 'string' && state.activeFolderId !== 'all' && state.activeFolderId !== 'pinned'
-      ? state.activeFolderId
-      : null;
+    const folderId =
+      typeof state.activeFolderId === 'string' &&
+      state.activeFolderId !== 'all' &&
+      state.activeFolderId !== 'pinned'
+        ? state.activeFolderId : null;
     await createNote(folderId);
     if (window.innerWidth < 768) dispatch({ type: 'SET_SIDEBAR', open: false });
   };
 
+  const cycleTheme = () => {
+    const order: Theme[] = ['dark', 'light', 'system'];
+    const next = order[(order.indexOf(state.theme) + 1) % 3];
+    dispatch({ type: 'SET_THEME', theme: next });
+  };
+
   return (
-    <header className="header sticky top-0 z-50 border-b border-accents-2 bg-background/95 backdrop-blur-xl flex items-center px-4 h-14 gap-3">
+    <header className="app-header">
       {/* Left */}
       <button
         onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
-        className="toolbar-btn"
-        title="Toggle sidebar"
+        className="icon-btn"
+        title="Toggle sidebar (Ctrl+\\)"
       >
-        <Menu className="h-4 w-4" />
+        <Menu size={16} />
       </button>
 
       {/* Logo */}
-      <div className="flex items-center gap-2 mr-2">
-        <Logo className="h-7 w-7" />
-        <span className="font-bold text-sm tracking-tight hidden sm:block">
+      <div className="flex items-center gap-2 select-none">
+        <CookieLogoMark className="w-7 h-7" />
+        <span className="font-bold text-[15px] tracking-[-0.03em] hidden sm:block">
           cookie<span className="text-accent">.io</span>
         </span>
       </div>
 
-      {/* Breadcrumb / active folder */}
-      {state.activeFolderId && state.activeFolderId !== 'all' && state.activeFolderId !== 'pinned' && (
-        <div className="hidden md:flex items-center gap-1.5 text-xs text-accents-5">
-          <span>/</span>
-          <span className="font-medium text-foreground">
+      {/* Folder breadcrumb */}
+      {state.activeFolderId &&
+        state.activeFolderId !== 'all' &&
+        state.activeFolderId !== 'pinned' && (
+        <div className="hidden md:flex items-center gap-1.5 text-xs" style={{ color: 'var(--accents-5)' }}>
+          <span className="font-mono">/</span>
+          <span className="font-semibold" style={{ color: 'var(--fg)' }}>
             {state.folders.find((f) => f._id === state.activeFolderId)?.name ?? 'Folder'}
           </span>
         </div>
@@ -55,95 +78,127 @@ export function Header() {
 
       <div className="flex-1" />
 
-      {/* WS status */}
-      <div className="hidden sm:flex items-center gap-2">
-        <div
-          className={`ws-dot ${state.wsConnected ? 'connected' : 'disconnected'}`}
-          title={state.wsConnected ? 'Real-time sync active' : 'Connecting…'}
-        />
-        <span className="text-[10px] text-accents-4 font-mono hidden lg:block">
+      {/* WS indicator */}
+      <div className="hidden sm:flex items-center gap-1.5">
+        <WsIcon connected={state.wsConnected} />
+        <span className="text-[10px] font-mono hidden lg:block" style={{ color: 'var(--accents-4)' }}>
           {state.wsConnected ? 'live' : 'offline'}
         </span>
       </div>
 
-      {/* Collaborators */}
+      {/* Collab avatars */}
       {state.collaborators.length > 0 && (
         <div className="hidden sm:flex items-center">
           {state.collaborators.slice(0, 4).map((c) => (
-            <div
-              key={c.userId}
-              className="collab-avatar"
-              style={{ background: c.color }}
-              title={c.userName}
-            >
+            <div key={c.userId} className="collab-avatar text-[9px]"
+              style={{ background: c.color }} title={c.userName}>
               {c.userName[0]}
             </div>
           ))}
-          {state.collaborators.length > 4 && (
-            <div className="collab-avatar bg-accents-3 text-foreground text-[9px]">
-              +{state.collaborators.length - 4}
-            </div>
-          )}
         </div>
       )}
 
-      {/* Theme switcher */}
-      <div className="hidden sm:flex items-center rounded-lg border border-accents-2 bg-accents-1 p-0.5 gap-0.5">
-        {THEMES.map((t) => (
-          <button
-            key={t.value}
-            onClick={() => dispatch({ type: 'SET_THEME', theme: t.value })}
-            title={t.label}
-            className={`flex items-center justify-center rounded-md h-6 w-6 transition-all text-xs ${
-              state.theme === t.value
-                ? 'bg-background text-foreground shadow-sm border border-accents-2'
-                : 'text-accents-5 hover:text-foreground'
-            }`}
-          >
-            {t.icon}
-          </button>
-        ))}
-      </div>
+      {/* Theme */}
+      <button onClick={cycleTheme} className="icon-btn" title={`Theme: ${state.theme}`}>
+        {ThemeIcons[state.theme]}
+      </button>
 
       {/* Search */}
       <button
         onClick={() => dispatch({ type: 'SET_SEARCH_OPEN', open: true })}
-        className="hidden sm:flex items-center gap-2 rounded-lg border border-accents-2 bg-accents-1/50 px-3 py-1.5 text-xs text-accents-5 hover:text-foreground hover:border-accents-4 transition-all"
+        className="search-trigger hidden sm:flex"
         title="Search (Ctrl+K)"
       >
-        <Search className="h-3.5 w-3.5" />
+        <Search size={13} />
         <span className="hidden md:block">Search</span>
-        <kbd className="hidden md:flex items-center gap-0.5 rounded border border-accents-2 bg-background px-1.5 py-0.5 text-[10px] font-mono text-accents-4">
-          ⌘K
-        </kbd>
+        <span className="kbd hidden md:flex">⌘K</span>
+      </button>
+
+      {/* Mobile search */}
+      <button
+        onClick={() => dispatch({ type: 'SET_SEARCH_OPEN', open: true })}
+        className="icon-btn sm:hidden"
+      >
+        <Search size={15} />
       </button>
 
       {/* New note */}
       <button
         onClick={handleNewNote}
-        className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90 transition-all"
-        style={{ background: 'var(--accent)' }}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-85 active:scale-95"
+        style={{ background: 'var(--fg)', color: 'var(--bg)' }}
+        title="New note"
       >
-        <Plus className="h-3.5 w-3.5" />
-        <span className="hidden sm:block">New Note</span>
+        <Plus size={13} />
+        <span className="hidden sm:block">New</span>
       </button>
 
       {/* Settings */}
       <button
         onClick={() => dispatch({ type: 'SET_SETTINGS_OPEN', open: true })}
-        className="toolbar-btn"
-        title="Settings"
+        className="icon-btn"
+        title="Settings (Ctrl+,)"
       >
-        <Settings className="h-4 w-4" />
+        <Settings size={15} />
       </button>
 
-      {/* Mobile: Search */}
-      <button
-        onClick={() => dispatch({ type: 'SET_SEARCH_OPEN', open: true })}
-        className="sm:hidden toolbar-btn"
-      >
-        <Search className="h-4 w-4" />
-      </button>
+      {/* Account */}
+      <div className="relative" ref={accountRef}>
+        <button
+          onClick={() => setAccountOpen((v) => !v)}
+          className="flex items-center gap-1.5 select-none"
+          title="Account"
+        >
+          <div
+            className="user-avatar text-[10px]"
+            style={{ background: 'var(--accent)' }}
+          >
+            {(user?.displayName || user?.username || 'U')[0].toUpperCase()}
+          </div>
+          <ChevronDown
+            size={11}
+            className="hidden sm:block transition-transform duration-200"
+            style={{
+              color: 'var(--accents-4)',
+              transform: accountOpen ? 'rotate(180deg)' : 'none',
+            }}
+          />
+        </button>
+
+        <AnimatePresence>
+          {accountOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setAccountOpen(false)} />
+              <motion.div
+                initial={{ opacity: 0, y: -6, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.96 }}
+                transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                className="account-menu"
+              >
+                {/* Profile info */}
+                <div className="px-3 py-2 mb-1" style={{ borderBottom: '1px solid var(--accents-2)' }}>
+                  <p className="text-[13px] font-semibold truncate">{user?.displayName || user?.username}</p>
+                  <p className="text-[11px] font-mono" style={{ color: 'var(--accents-4)' }}>@{user?.username}</p>
+                </div>
+                <button
+                  className="account-menu-item"
+                  onClick={() => { setAccountOpen(false); dispatch({ type: 'SET_SETTINGS_OPEN', open: true }); }}
+                >
+                  <User size={13} style={{ color: 'var(--accents-4)' }} /> Profile & Settings
+                </button>
+                <div style={{ borderTop: '1px solid var(--accents-2)', margin: '4px 0' }} />
+                <button
+                  className="account-menu-item danger"
+                  onClick={() => { setAccountOpen(false); logout(); }}
+                >
+                  <LogOut size={13} style={{ color: 'currentcolor' }} /> Sign out
+                </button>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+      </div>
     </header>
   );
 }
