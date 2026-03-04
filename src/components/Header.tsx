@@ -1,26 +1,29 @@
 import React, { useRef, useState } from 'react';
-import { Menu, Search, Settings, Plus, Moon, Sun, Monitor, ChevronDown, LogOut, User, Lock } from 'lucide-react';
-import { CookieLogoMark } from './Logo';
+import { Menu, Search, Plus, Moon, Sun, Monitor, ChevronDown, LogOut, User, Settings } from 'lucide-react';
+import { CookieLogoMark, UserAvatar } from './Logo';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { Theme } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 
-// SVG Icons
-const WsIcon = ({ connected }: { connected: boolean }) => (
-  <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-    <circle cx="4" cy="4" r="4" fill={connected ? '#22c55e' : 'var(--accents-4)'} />
-    {connected && <circle cx="4" cy="4" r="4" fill="#22c55e" opacity="0.3">
-      <animate attributeName="r" values="4;7;4" dur="2s" repeatCount="indefinite" />
-      <animate attributeName="opacity" values="0.3;0;0.3" dur="2s" repeatCount="indefinite" />
-    </circle>}
-  </svg>
+// Live WebSocket indicator
+const WsIndicator = ({ connected }: { connected: boolean }) => (
+  <div className="ws-status-pill">
+    <span className={`ws-dot-animated ${connected ? 'connected' : ''}`} />
+    <span className="ws-status-text">{connected ? 'live' : 'offline'}</span>
+  </div>
 );
 
 const ThemeIcons: Record<Theme, React.ReactNode> = {
-  dark:   <Moon size={13} />,
-  light:  <Sun  size={13} />,
-  system: <Monitor size={13} />,
+  dark:   <Moon size={14} />,
+  light:  <Sun  size={14} />,
+  system: <Monitor size={14} />,
+};
+
+const ThemeLabels: Record<Theme, string> = {
+  dark: 'Dark',
+  light: 'Light',
+  system: 'System',
 };
 
 export function Header() {
@@ -45,21 +48,25 @@ export function Header() {
     dispatch({ type: 'SET_THEME', theme: next });
   };
 
+  const username = user?.username || 'anonymous';
+  const displayName = user?.displayName || user?.username || 'User';
+
   return (
     <header className="app-header">
-      {/* Left */}
+      {/* ── Left group ── */}
       <button
         onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
-        className="icon-btn"
+        className="icon-btn header-menu-btn"
         title="Toggle sidebar (Ctrl+\\)"
+        aria-label="Toggle sidebar"
       >
-        <Menu size={16} />
+        <Menu size={17} />
       </button>
 
       {/* Logo */}
-      <div className="flex items-center gap-2 select-none">
+      <div className="header-logo select-none">
         <CookieLogoMark className="w-7 h-7" />
-        <span className="font-bold text-[15px] tracking-[-0.03em] hidden sm:block">
+        <span className="header-logo-text">
           cookie<span className="text-accent">.io</span>
         </span>
       </div>
@@ -68,9 +75,9 @@ export function Header() {
       {state.activeFolderId &&
         state.activeFolderId !== 'all' &&
         state.activeFolderId !== 'pinned' && (
-        <div className="hidden md:flex items-center gap-1.5 text-xs" style={{ color: 'var(--accents-5)' }}>
-          <span className="font-mono">/</span>
-          <span className="font-semibold" style={{ color: 'var(--fg)' }}>
+        <div className="folder-breadcrumb">
+          <span className="font-mono opacity-50">/</span>
+          <span className="folder-breadcrumb-name">
             {state.folders.find((f) => f._id === state.activeFolderId)?.name ?? 'Folder'}
           </span>
         </div>
@@ -78,90 +85,79 @@ export function Header() {
 
       <div className="flex-1" />
 
-      {/* WS indicator */}
-      <div className="hidden sm:flex items-center gap-1.5">
-        <WsIcon connected={state.wsConnected} />
-        <span className="text-[10px] font-mono hidden lg:block" style={{ color: 'var(--accents-4)' }}>
-          {state.wsConnected ? 'live' : 'offline'}
-        </span>
-      </div>
+      {/* ── Right group ── */}
+
+      {/* WS indicator — desktop only */}
+      <WsIndicator connected={state.wsConnected} />
 
       {/* Collab avatars */}
       {state.collaborators.length > 0 && (
-        <div className="hidden sm:flex items-center">
-          {state.collaborators.slice(0, 4).map((c) => (
-            <div key={c.userId} className="collab-avatar text-[9px]"
-              style={{ background: c.color }} title={c.userName}>
+        <div className="collab-stack">
+          {state.collaborators.slice(0, 3).map((c) => (
+            <div
+              key={c.userId}
+              className="collab-avatar text-[9px]"
+              style={{ background: c.color }}
+              title={c.userName}
+            >
               {c.userName[0]}
             </div>
           ))}
+          {state.collaborators.length > 3 && (
+            <div className="collab-avatar text-[9px]" style={{ background: 'var(--accents-4)' }}>
+              +{state.collaborators.length - 3}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Theme */}
-      <button onClick={cycleTheme} className="icon-btn" title={`Theme: ${state.theme}`}>
-        {ThemeIcons[state.theme]}
+      {/* Theme toggle */}
+      <button
+        onClick={cycleTheme}
+        className="theme-cycle-btn"
+        title={`Theme: ${state.theme} (click to cycle)`}
+        aria-label="Cycle theme"
+      >
+        <span className="theme-icon">{ThemeIcons[state.theme]}</span>
+        <span className="theme-label">{ThemeLabels[state.theme]}</span>
       </button>
 
-      {/* Search */}
+      {/* Search — single unified button */}
       <button
         onClick={() => dispatch({ type: 'SET_SEARCH_OPEN', open: true })}
-        className="search-trigger hidden sm:flex"
+        className="header-search-btn"
         title="Search (Ctrl+K)"
+        aria-label="Search notes"
       >
-        <Search size={13} />
-        <span className="hidden md:block">Search</span>
-        <span className="kbd hidden md:flex">⌘K</span>
+        <Search size={14} />
+        <span className="header-search-text">Search notes…</span>
+        <kbd className="kbd header-search-kbd">⌘K</kbd>
       </button>
 
-      {/* Mobile search */}
-      <button
-        onClick={() => dispatch({ type: 'SET_SEARCH_OPEN', open: true })}
-        className="icon-btn sm:hidden"
-      >
-        <Search size={15} />
-      </button>
-
-      {/* New note */}
+      {/* New note — icon only on mobile, text+icon on desktop */}
       <button
         onClick={handleNewNote}
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-85 active:scale-95"
-        style={{ background: 'var(--fg)', color: 'var(--bg)' }}
+        className="new-note-btn"
         title="New note"
+        aria-label="Create new note"
       >
-        <Plus size={13} />
-        <span className="hidden sm:block">New</span>
+        <Plus size={14} strokeWidth={2.5} />
+        <span className="new-note-text">New</span>
       </button>
 
-      {/* Settings */}
-      <button
-        onClick={() => dispatch({ type: 'SET_SETTINGS_OPEN', open: true })}
-        className="icon-btn"
-        title="Settings (Ctrl+,)"
-      >
-        <Settings size={15} />
-      </button>
-
-      {/* Account */}
+      {/* Account — profile avatar + dropdown (replaces separate settings button) */}
       <div className="relative" ref={accountRef}>
         <button
           onClick={() => setAccountOpen((v) => !v)}
-          className="flex items-center gap-1.5 select-none"
-          title="Account"
+          className="avatar-trigger"
+          aria-label="Account menu"
+          title={`${displayName} (@${username})`}
         >
-          <div
-            className="user-avatar text-[10px]"
-            style={{ background: 'var(--accent)' }}
-          >
-            {(user?.displayName || user?.username || 'U')[0].toUpperCase()}
-          </div>
+          <UserAvatar username={username} size={30} showRing={accountOpen} />
           <ChevronDown
             size={11}
-            className="hidden sm:block transition-transform duration-200"
-            style={{
-              color: 'var(--accents-4)',
-              transform: accountOpen ? 'rotate(180deg)' : 'none',
-            }}
+            className="avatar-chevron"
+            style={{ transform: accountOpen ? 'rotate(180deg)' : 'none' }}
           />
         </button>
 
@@ -170,30 +166,53 @@ export function Header() {
             <>
               <div className="fixed inset-0 z-40" onClick={() => setAccountOpen(false)} />
               <motion.div
-                initial={{ opacity: 0, y: -6, scale: 0.96 }}
+                initial={{ opacity: 0, y: -8, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -6, scale: 0.96 }}
-                transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-                className="account-menu"
+                exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                className="account-dropdown"
               >
-                {/* Profile info */}
-                <div className="px-3 py-2 mb-1" style={{ borderBottom: '1px solid var(--accents-2)' }}>
-                  <p className="text-[13px] font-semibold truncate">{user?.displayName || user?.username}</p>
-                  <p className="text-[11px] font-mono" style={{ color: 'var(--accents-4)' }}>@{user?.username}</p>
+                {/* Profile header */}
+                <div className="account-dropdown-header">
+                  <UserAvatar username={username} size={40} />
+                  <div className="min-w-0">
+                    <p className="account-display-name truncate">{displayName}</p>
+                    <p className="account-username">@{username}</p>
+                  </div>
                 </div>
-                <button
-                  className="account-menu-item"
-                  onClick={() => { setAccountOpen(false); dispatch({ type: 'SET_SETTINGS_OPEN', open: true }); }}
-                >
-                  <User size={13} style={{ color: 'var(--accents-4)' }} /> Profile & Settings
-                </button>
-                <div style={{ borderTop: '1px solid var(--accents-2)', margin: '4px 0' }} />
-                <button
-                  className="account-menu-item danger"
-                  onClick={() => { setAccountOpen(false); logout(); }}
-                >
-                  <LogOut size={13} style={{ color: 'currentcolor' }} /> Sign out
-                </button>
+
+                {/* Menu items */}
+                <div className="account-dropdown-body">
+                  <button
+                    className="account-menu-item"
+                    onClick={() => {
+                      setAccountOpen(false);
+                      dispatch({ type: 'SET_SETTINGS_OPEN', open: true });
+                    }}
+                  >
+                    <Settings size={14} style={{ color: 'var(--accents-5)' }} />
+                    <span>Settings & Profile</span>
+                  </button>
+
+                  <button
+                    className="account-menu-item"
+                    onClick={cycleTheme}
+                  >
+                    <span style={{ color: 'var(--accents-5)', display: 'flex' }}>{ThemeIcons[state.theme]}</span>
+                    <span>Theme: {ThemeLabels[state.theme]}</span>
+                    <span className="ml-auto text-[10px] font-mono" style={{ color: 'var(--accents-4)' }}>click to cycle</span>
+                  </button>
+
+                  <div className="account-dropdown-divider" />
+
+                  <button
+                    className="account-menu-item danger"
+                    onClick={() => { setAccountOpen(false); logout(); }}
+                  >
+                    <LogOut size={14} />
+                    <span>Sign out</span>
+                  </button>
+                </div>
               </motion.div>
             </>
           )}
