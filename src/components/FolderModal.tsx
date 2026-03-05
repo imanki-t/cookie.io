@@ -3,19 +3,21 @@ import { X, FolderPlus, Folder, Check } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { motion } from 'motion/react';
 
+/* 20 colors — 4 rows × 5 cols = perfectly even */
 const FOLDER_COLORS = [
-  '#f59e0b','#ef4444','#10b981','#3b82f6',
-  '#8b5cf6','#f97316','#06b6d4','#ec4899',
-  '#84cc16','#6366f1','#14b8a6','#f43f5e',
+  '#d97706', '#f59e0b', '#f97316', '#ea580c', '#dc2626',
+  '#e11d48', '#db2777', '#9333ea', '#7c3aed', '#4f46e5',
+  '#2563eb', '#0891b2', '#0d9488', '#16a34a', '#65a30d',
+  '#854d0e', '#78716c', '#6b7280', '#374151', '#0f172a',
 ];
 
 export function FolderModal() {
   const { state, dispatch, createFolder, updateFolder } = useApp();
   const isEditing = !!state.folderModalTarget;
-  const [name, setName]   = useState('');
-  const [color, setColor] = useState(FOLDER_COLORS[0]);
+  const [name,     setName]     = useState('');
+  const [color,    setColor]    = useState(FOLDER_COLORS[0]);
   const [parentId, setParentId] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [saving,   setSaving]   = useState(false);
 
   useEffect(() => {
     if (state.folderModalOpen) {
@@ -51,15 +53,15 @@ export function FolderModal() {
   return (
     <div className="modal-backdrop" onClick={() => dispatch({ type: 'SET_FOLDER_MODAL', open: false })}>
       <motion.div
-        initial={{ opacity: 0, y: -14, scale: 0.97 }}
+        initial={{ opacity: 0, y: -16, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
         className="modal-panel"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header">
           <span className="modal-title" style={{ color }}>
-            <FolderPlus size={15} />
+            <FolderPlus size={16} />
             {isEditing ? 'Rename Folder' : 'New Folder'}
           </span>
           <button className="toolbar-btn" onClick={() => dispatch({ type: 'SET_FOLDER_MODAL', open: false })}>
@@ -67,30 +69,68 @@ export function FolderModal() {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-5">
+        <form onSubmit={handleSubmit} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div>
-            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--accents-4)' }}>Folder name</label>
+            <label style={{
+              display: 'block',
+              fontSize: 9.5,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              marginBottom: 8,
+              color: 'var(--accents-4)',
+            }}>
+              Folder name
+            </label>
             <input
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Work, Personal, Ideas…"
-              className="w-full rounded-xl px-4 py-2.5 text-sm outline-none transition-all"
-              style={{ background: 'var(--accents-1)', border: '1px solid var(--accents-2)', color: 'var(--fg)', fontFamily: 'var(--font-sans)' }}
+              className="settings-input"
               maxLength={64}
             />
           </div>
 
           <div>
-            <label className="block text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--accents-4)' }}>Color</label>
-            <div className="flex flex-wrap gap-2">
+            <label style={{
+              display: 'block',
+              fontSize: 9.5,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              marginBottom: 10,
+              color: 'var(--accents-4)',
+            }}>
+              Color — 20 choices
+            </label>
+            {/* 4 rows × 5 cols */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(5, 1fr)',
+              gap: 8,
+            }}>
               {FOLDER_COLORS.map((c) => (
                 <button
-                  key={c} type="button" onClick={() => setColor(c)}
-                  className="color-swatch"
-                  style={{ background: c, borderColor: color === c ? 'var(--fg)' : 'transparent' }}
+                  key={c}
+                  type="button"
+                  onClick={() => setColor(c)}
+                  style={{
+                    width: '100%',
+                    aspectRatio: '1',
+                    borderRadius: 'var(--r-md)',
+                    background: c,
+                    border: color === c ? '2.5px solid var(--fg)' : '2px solid transparent',
+                    cursor: 'pointer',
+                    transition: 'all 0.12s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transform: color === c ? 'scale(1.1)' : 'scale(1)',
+                    boxShadow: color === c ? `0 0 0 3px var(--bg), 0 0 0 5px ${c}` : 'none',
+                  }}
                 >
-                  {color === c && <Check size={12} color="white" style={{ margin: 'auto' }} />}
+                  {color === c && <Check size={12} color="white" style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))' }} />}
                 </button>
               ))}
             </div>
@@ -98,40 +138,62 @@ export function FolderModal() {
 
           {!isEditing && state.folders.length > 0 && (
             <div>
-              <label className="block text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--accents-4)' }}>Parent folder (optional)</label>
+              <label style={{
+                display: 'block',
+                fontSize: 9.5,
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.1em',
+                marginBottom: 8,
+                color: 'var(--accents-4)',
+              }}>
+                Parent folder (optional)
+              </label>
               <select
                 value={parentId || ''}
                 onChange={(e) => setParentId(e.target.value || null)}
-                className="w-full rounded-xl px-4 py-2.5 text-sm outline-none"
-                style={{ background: 'var(--accents-1)', border: '1px solid var(--accents-2)', color: 'var(--fg)' }}
+                className="settings-input"
               >
                 <option value="">None (root)</option>
-                {state.folders.filter((f) => !state.folderModalTarget || f._id !== state.folderModalTarget._id).map((f) => (
-                  <option key={f._id} value={f._id}>{f.name}</option>
-                ))}
+                {state.folders
+                  .filter((f) => !state.folderModalTarget || f._id !== state.folderModalTarget._id)
+                  .map((f) => (
+                    <option key={f._id} value={f._id}>{f.name}</option>
+                  ))}
               </select>
             </div>
           )}
 
           {/* Preview */}
-          <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: 'var(--accents-1)', border: '1px solid var(--accents-2)' }}>
-            <Folder size={16} style={{ color }} />
-            <span className="text-sm font-medium">{name || 'Untitled Folder'}</span>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: '12px 16px',
+            borderRadius: 'var(--r-xl)',
+            background: 'var(--accents-1)',
+            border: '1.5px solid var(--accents-2)',
+          }}>
+            <Folder size={18} style={{ color }} />
+            <span style={{ fontSize: 14, fontWeight: 600 }}>{name || 'Untitled Folder'}</span>
           </div>
 
-          <div className="flex gap-2">
-            <button type="button"
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
               onClick={() => dispatch({ type: 'SET_FOLDER_MODAL', open: false })}
-              className="flex-1 rounded-xl py-2.5 text-sm font-medium transition-all hover:bg-[var(--accents-1)]"
-              style={{ border: '1px solid var(--accents-2)', color: 'var(--accents-5)' }}
+              className="settings-btn secondary"
+              style={{ flex: 1, justifyContent: 'center' }}
             >
               Cancel
             </button>
-            <button type="submit" disabled={!name.trim() || saving}
-              className="flex-1 rounded-xl py-2.5 text-sm font-semibold text-white transition-all hover:opacity-85 disabled:opacity-40"
-              style={{ background: 'var(--fg)', color: 'var(--bg)' }}
+            <button
+              type="submit"
+              disabled={!name.trim() || saving}
+              className="settings-btn primary"
+              style={{ flex: 1, justifyContent: 'center' }}
             >
-              {saving ? 'Saving…' : isEditing ? 'Save' : 'Create folder'}
+              {saving ? 'Saving…' : isEditing ? 'Save changes' : 'Create folder'}
             </button>
           </div>
         </form>
@@ -156,7 +218,7 @@ export function MoveNoteModal() {
   return (
     <div className="modal-backdrop" onClick={() => dispatch({ type: 'SET_MOVE_NOTE', open: false })}>
       <motion.div
-        initial={{ opacity: 0, y: -14, scale: 0.97 }}
+        initial={{ opacity: 0, y: -16, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.2 }}
         className="modal-panel"
@@ -168,15 +230,15 @@ export function MoveNoteModal() {
             <X size={14} />
           </button>
         </div>
-        <div className="p-2" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+        <div style={{ padding: '8px', maxHeight: '60vh', overflowY: 'auto' }}>
           <button
             onClick={() => handleMove(null)}
             className="folder-row w-full"
             style={note.folderId === null ? { background: 'var(--accent-bg)', color: 'var(--accent)' } : {}}
           >
             <Folder size={14} style={{ color: 'var(--accents-4)' }} />
-            <span className="flex-1 text-left text-sm">Root (no folder)</span>
-            {note.folderId === null && <Check size={12} style={{ color: 'var(--accent)' }} />}
+            <span style={{ flex: 1, textAlign: 'left', fontSize: 13 }}>Root (no folder)</span>
+            {note.folderId === null && <Check size={13} style={{ color: 'var(--accent)' }} />}
           </button>
           {state.folders.map((folder) => (
             <button
@@ -186,8 +248,8 @@ export function MoveNoteModal() {
               style={note.folderId === folder._id ? { background: 'var(--accent-bg)', color: 'var(--accent)' } : {}}
             >
               <Folder size={14} style={{ color: folder.color }} />
-              <span className="flex-1 text-left text-sm">{folder.name}</span>
-              {note.folderId === folder._id && <Check size={12} style={{ color: 'var(--accent)' }} />}
+              <span style={{ flex: 1, textAlign: 'left', fontSize: 13 }}>{folder.name}</span>
+              {note.folderId === folder._id && <Check size={13} style={{ color: 'var(--accent)' }} />}
             </button>
           ))}
         </div>

@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Menu, Search, Plus, LogOut, Settings, ChevronDown, FileText } from 'lucide-react';
+import { LogOut, Settings, ChevronDown, FileText, Search } from 'lucide-react';
 import { CookieLogoMark, UserAvatar } from './Logo';
 import { useApp } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
@@ -35,20 +35,10 @@ function CollabStack({ collaborators }: { collaborators: Array<{ userId: string;
 }
 
 export function Header() {
-  const { state, dispatch, createNote } = useApp();
-  const { user, logout } = useAuth();
+  const { state, dispatch } = useApp();
+  const { user, logout }   = useAuth();
   const [accountOpen, setAccountOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
-
-  const handleNewNote = async () => {
-    const folderId =
-      typeof state.activeFolderId === 'string' &&
-      state.activeFolderId !== 'all' &&
-      state.activeFolderId !== 'pinned'
-        ? state.activeFolderId : null;
-    await createNote(folderId);
-    if (window.innerWidth < 768) dispatch({ type: 'SET_SIDEBAR', open: false });
-  };
 
   const username    = user?.username    || 'anonymous';
   const displayName = user?.displayName || user?.username || 'User';
@@ -63,14 +53,20 @@ export function Header() {
         onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
         title="Toggle sidebar (Ctrl+\\)"
         aria-label="Toggle sidebar"
+        style={{ flexShrink: 0 }}
       >
-        <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
-          <path d="M1.5 3h12M1.5 7.5h12M1.5 12h12" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+        <svg width="16" height="16" viewBox="0 0 15 15" fill="none">
+          <path d="M1.5 3h12M1.5 7.5h12M1.5 12h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
         </svg>
       </button>
 
       {/* Logo */}
-      <a className="header-logo" href="#" onClick={(e) => { e.preventDefault(); dispatch({ type: 'SET_ACTIVE_NOTE', id: null }); }}>
+      <a
+        className="header-logo"
+        href="#"
+        onClick={(e) => { e.preventDefault(); dispatch({ type: 'SET_ACTIVE_NOTE', id: null }); }}
+        style={{ flexShrink: 0 }}
+      >
         <CookieLogoMark className="w-6 h-6" />
         <span className="header-logo-text">
           cookie<span className="text-accent">.io</span>
@@ -93,37 +89,27 @@ export function Header() {
       {/* Collab avatars */}
       <CollabStack collaborators={state.collaborators} />
 
-      {/* Search */}
+      {/* Search — bigger and more prominent */}
       <button
         className="search-trigger"
         onClick={() => dispatch({ type: 'SET_SEARCH_OPEN', open: true })}
-        title="Search (Ctrl+K)"
+        title="Search notes (Ctrl+K)"
         aria-label="Search notes"
+        style={{ flexShrink: 0 }}
       >
-        <svg width="13" height="13" viewBox="0 0 15 15" fill="none">
-          <circle cx="6.5" cy="6.5" r="5" stroke="currentColor" strokeWidth="1.3"/>
-          <path d="M10.5 10.5l3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-        </svg>
-        <span className="search-trigger-text" style={{ color: 'var(--accents-4)' }}>Search notes…</span>
-        <kbd className="kbd search-trigger-kbd">⌘K</kbd>
-      </button>
-
-      {/* New note */}
-      <button className="btn-new-note" onClick={handleNewNote} title="New note">
-        <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-          <path d="M5.5 1v9M1 5.5h9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
-        </svg>
-        <span className="btn-new-note-text">New</span>
+        <Search size={13} style={{ flexShrink: 0 }} />
+        <span className="search-trigger-text">Search notes…</span>
+        <kbd className="kbd search-trigger-kbd" style={{ marginLeft: 'auto', flexShrink: 0 }}>⌘K</kbd>
       </button>
 
       {/* Account */}
-      <div className="relative" ref={accountRef}>
+      <div style={{ position: 'relative', flexShrink: 0 }} ref={accountRef}>
         <button
           className="avatar-trigger"
           onClick={() => setAccountOpen((v) => !v)}
           aria-label="Account menu"
         >
-          <UserAvatar username={username} size={28} showRing={accountOpen} />
+          <UserAvatar username={username} size={30} showRing={accountOpen} />
           <ChevronDown
             size={10}
             className="avatar-chevron"
@@ -136,15 +122,16 @@ export function Header() {
             <>
               <div className="fixed inset-0 z-40" onClick={() => setAccountOpen(false)} />
               <motion.div
-                initial={{ opacity: 0, y: -6, scale: 0.96 }}
+                initial={{ opacity: 0, y: -8, scale: 0.96 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -6, scale: 0.96 }}
-                transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
                 className="account-dropdown"
+                style={{ right: 0, top: 'calc(100% + 7px)', position: 'absolute' }}
               >
                 {/* Profile header */}
                 <div className="account-dropdown-header">
-                  <UserAvatar username={username} size={36} />
+                  <UserAvatar username={username} size={38} />
                   <div style={{ minWidth: 0 }}>
                     <p className="account-display-name truncate">{displayName}</p>
                     <p className="account-username">@{username}</p>
@@ -153,22 +140,22 @@ export function Header() {
 
                 <div className="account-sep" />
 
-                {/* Note count pill */}
+                {/* Note count */}
                 <div style={{ padding: '4px 10px 6px' }}>
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '7px 10px',
+                    padding: '8px 11px',
                     borderRadius: 'var(--r-md)',
                     background: 'var(--accents-1)',
                     border: '1px solid var(--accents-2)',
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <FileText size={12} style={{ color: 'var(--accents-5)' }} />
-                      <span style={{ fontSize: 11, color: 'var(--accents-5)' }}>Notes</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                      <FileText size={13} style={{ color: 'var(--accents-5)' }} />
+                      <span style={{ fontSize: 12, color: 'var(--accents-5)' }}>Notes</span>
                     </div>
-                    <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
+                    <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', fontWeight: 700 }}>
                       {state.notes.length}
                     </span>
                   </div>
@@ -180,7 +167,7 @@ export function Header() {
                   className="account-menu-item"
                   onClick={() => { setAccountOpen(false); dispatch({ type: 'SET_SETTINGS_OPEN', open: true }); }}
                 >
-                  <Settings size={13} style={{ color: 'var(--accents-4)' }} />
+                  <Settings size={14} style={{ color: 'var(--accents-4)' }} />
                   <span>Settings</span>
                 </button>
 
@@ -190,7 +177,7 @@ export function Header() {
                   className="account-menu-item danger"
                   onClick={() => { setAccountOpen(false); logout(); }}
                 >
-                  <LogOut size={13} />
+                  <LogOut size={14} />
                   <span>Sign out</span>
                 </button>
               </motion.div>

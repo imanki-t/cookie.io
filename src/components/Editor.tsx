@@ -1,9 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bold, Italic, Strikethrough, Code, List, ListOrdered,
-  Quote, Minus, Eye, Edit2, Columns, X, Pin,
-  Copy, Check, Maximize2, Minimize2,
-  Image, Download,
+  Quote, Minus, Eye, Edit2, X, Pin,
+  Copy, Check, Maximize2, Minimize2, Image, Download,
 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -17,9 +16,9 @@ import { formatDistanceToNow } from 'date-fns';
 /* ── Helpers ── */
 const NOTE_COLORS = [null,'#f59e0b','#ef4444','#10b981','#3b82f6','#8b5cf6','#f97316','#06b6d4','#ec4899'];
 
-const H1Icon = () => <span style={{ fontSize: 9, fontWeight: 900, fontFamily: 'var(--font-mono)', letterSpacing: 0 }}>H1</span>;
-const H2Icon = () => <span style={{ fontSize: 9, fontWeight: 700, fontFamily: 'var(--font-mono)', letterSpacing: 0 }}>H2</span>;
-const H3Icon = () => <span style={{ fontSize: 9, fontWeight: 700, fontFamily: 'var(--font-mono)', letterSpacing: 0 }}>H3</span>;
+const H1Icon = () => <span style={{ fontSize: 9, fontWeight: 900, fontFamily: 'var(--font-mono)' }}>H1</span>;
+const H2Icon = () => <span style={{ fontSize: 9, fontWeight: 700, fontFamily: 'var(--font-mono)' }}>H2</span>;
+const H3Icon = () => <span style={{ fontSize: 9, fontWeight: 700, fontFamily: 'var(--font-mono)' }}>H3</span>;
 
 const PinSVG = ({ filled }: { filled: boolean }) => (
   <svg width="12" height="12" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -28,7 +27,6 @@ const PinSVG = ({ filled }: { filled: boolean }) => (
   </svg>
 );
 
-/* ── Time-based greeting ── */
 function getGreeting(): { greeting: string; sub: string } {
   const h = new Date().getHours();
   if (h >= 5  && h < 12) return { greeting: 'Good morning',   sub: 'What will you write today?' };
@@ -56,7 +54,7 @@ function TagInput({ tags, onChange }: { tags: string[]; onChange: (t: string[]) 
       {tags.map((tag) => (
         <span key={tag} className="tag-pill accent">
           {tag}
-          <button onClick={() => remove(tag)} style={{ marginLeft: 2, opacity: 0.6, background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'inherit' }}>
+          <button onClick={() => remove(tag)} style={{ marginLeft: 2, opacity: 0.65, background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', color: 'inherit' }}>
             <X size={8} />
           </button>
         </span>
@@ -94,13 +92,13 @@ function HomeScreen() {
   return (
     <div className="home-screen">
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
+        initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         style={{ width: '100%', maxWidth: 600 }}
       >
         {/* Greeting */}
-        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <h1 className="home-greeting">{greeting}</h1>
           <p className="home-greeting-sub">{sub}</p>
         </div>
@@ -132,26 +130,26 @@ function HomeScreen() {
                   key={note._id}
                   className="home-note-card animate-fade-up"
                   onClick={() => dispatch({ type: 'SET_ACTIVE_NOTE', id: note._id })}
-                  whileHover={{ y: -2 }}
+                  whileHover={{ y: -3 }}
                   transition={{ duration: 0.12 }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 5 }}>
                     <span className="home-note-title">{note.title || 'Untitled Note'}</span>
                     {note.color && (
-                      <div style={{ width: 7, height: 7, borderRadius: '50%', background: note.color, flexShrink: 0, marginTop: 4 }} />
+                      <div style={{ width: 8, height: 8, borderRadius: '50%', background: note.color, flexShrink: 0, marginTop: 4 }} />
                     )}
                   </div>
                   {note.content && (
                     <p className="home-note-snippet">
-                      {note.content.replace(/#{1,6}\s/g, '').replace(/[*_`\[\]()>~]/g, '').slice(0, 90)}
+                      {note.content.replace(/#{1,6}\s/g, '').replace(/[*_`\[\]()>~]/g, '').slice(0, 100)}
                     </p>
                   )}
                   <div className="home-note-footer">
-                    <span style={{ fontSize: 9.5, fontFamily: 'var(--font-mono)', color: 'var(--accents-4)' }}>
+                    <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--accents-4)' }}>
                       {formatDistanceToNow(new Date(note.updatedAt), { addSuffix: true })}
                     </span>
                     {note.wordCount > 0 && (
-                      <span style={{ fontSize: 9.5, fontFamily: 'var(--font-mono)', color: 'var(--accents-4)' }}>
+                      <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--accents-4)' }}>
                         {note.wordCount}w
                       </span>
                     )}
@@ -164,23 +162,23 @@ function HomeScreen() {
 
         {/* Empty state */}
         {!loading && state.notes.length === 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 0', textAlign: 'center' }}>
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--accents-3)', marginBottom: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '36px 0', textAlign: 'center' }}>
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" style={{ color: 'var(--accents-3)', marginBottom: 14 }}>
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
               <polyline points="14 2 14 8 20 8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
               <line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
               <line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
             </svg>
-            <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--accents-5)', marginBottom: 4 }}>No notes yet</p>
-            <p style={{ fontSize: 11, color: 'var(--accents-4)', marginBottom: 16 }}>Create your first note to get started</p>
+            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--accents-5)', marginBottom: 5 }}>No notes yet</p>
+            <p style={{ fontSize: 12, color: 'var(--accents-4)', marginBottom: 18 }}>Create your first note to get started</p>
           </div>
         )}
 
         {/* CTA */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 20 }}>
           <button className="home-cta" onClick={() => createNote()}>
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+            <svg width="13" height="13" viewBox="0 0 12 12" fill="none">
+              <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
             </svg>
             New note
           </button>
@@ -196,7 +194,8 @@ export function Editor() {
   const [title,    setTitle]    = useState('');
   const [content,  setContent]  = useState('');
   const [tags,     setTags]     = useState<string[]>([]);
-  const [viewMode, setViewMode] = useState<ViewMode>(state.settings.defaultView);
+  const [viewMode, setViewMode] = useState<'edit' | 'preview'>('edit');
+  const [editFocused, setEditFocused] = useState(false);
   const [saving,   setSaving]   = useState(false);
   const [saved,    setSaved]    = useState(false);
   const [colorOpen, setColorOpen] = useState(false);
@@ -204,11 +203,11 @@ export function Editor() {
   const [copied,   setCopied]   = useState(false);
   const [remoteEditors, setRemoteEditors] = useState<Record<string, { name: string; color: string }>>({});
 
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRef   = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
-  const saveTimer   = useRef<ReturnType<typeof setTimeout>>();
-  const wsTimer     = useRef<ReturnType<typeof setTimeout>>();
-  const prevNoteId  = useRef<string | null>(null);
+  const saveTimer     = useRef<ReturnType<typeof setTimeout>>();
+  const wsTimer       = useRef<ReturnType<typeof setTimeout>>();
+  const prevNoteId    = useRef<string | null>(null);
 
   /* Sync from active note */
   useEffect(() => {
@@ -218,9 +217,16 @@ export function Editor() {
       setContent(activeNote.content || '');
       setTags(activeNote.tags    || []);
       prevNoteId.current = activeNote._id;
+      setEditFocused(false);
       socket.joinNote(activeNote._id);
     }
   }, [activeNote]);
+
+  /* Set view mode from settings */
+  useEffect(() => {
+    const settingsView = state.settings.defaultView;
+    setViewMode(settingsView === 'split' ? 'edit' : settingsView as 'edit' | 'preview');
+  }, [state.settings.defaultView]);
 
   /* WebSocket events */
   useEffect(() => {
@@ -283,7 +289,11 @@ export function Editor() {
     const next = content.slice(0, s) + prefix + sel + suffix + content.slice(e);
     setContent(next);
     scheduleSync(title, next, tags);
-    setTimeout(() => { ta.focus(); ta.selectionStart = s + prefix.length; ta.selectionEnd = s + prefix.length + sel.length; }, 0);
+    setTimeout(() => {
+      ta.focus();
+      ta.selectionStart = s + prefix.length;
+      ta.selectionEnd = s + prefix.length + sel.length;
+    }, 0);
   }, [content, title, tags, scheduleSync]);
 
   const insertLine = useCallback((prefix: string) => {
@@ -308,7 +318,7 @@ export function Editor() {
     }
   }, [content, title, tags, state.settings.tabSize, scheduleSync]);
 
-  /* Image insert */
+  /* Image insert — properly display image */
   const handleImageInsert = useCallback(async (file: File) => {
     if (!activeNote) return;
     const reader = new FileReader();
@@ -316,19 +326,25 @@ export function Editor() {
       const dataUrl = e.target?.result as string;
       const base64  = dataUrl.split(',')[1];
       const mime    = file.type;
+      let imageUrl  = dataUrl;
+
       try {
         const result = await api.notes.addImage(activeNote._id, base64, mime, file.name);
-        const md  = `\n![${file.name}](${result.url})\n`;
-        const pos = textareaRef.current?.selectionStart ?? content.length;
-        const next = content.slice(0, pos) + md + content.slice(pos);
-        setContent(next);
-        scheduleSync(title, next, tags);
-      } catch {
-        const md  = `\n![${file.name}](${dataUrl})\n`;
-        const pos = textareaRef.current?.selectionStart ?? content.length;
-        const next = content.slice(0, pos) + md + content.slice(pos);
-        setContent(next);
-        scheduleSync(title, next, tags);
+        imageUrl = result.url;
+      } catch {}
+
+      // Insert markdown at cursor position
+      const md  = `\n![${file.name}](${imageUrl})\n`;
+      const pos = textareaRef.current?.selectionStart ?? content.length;
+      const next = content.slice(0, pos) + md + content.slice(pos);
+      setContent(next);
+      scheduleSync(title, next, tags);
+
+      // Switch to preview to show image, then switch back to edit briefly
+      // Actually just keep in edit mode — overlay will show the image when not focused
+      if (textareaRef.current) {
+        textareaRef.current.blur();
+        setEditFocused(false);
       }
     };
     reader.readAsDataURL(file);
@@ -374,27 +390,41 @@ export function Editor() {
 
   if (!activeNote) return <HomeScreen />;
 
+  const fontStyle = {
+    fontSize: `${state.settings.fontSize}px`,
+    lineHeight: state.settings.lineHeight,
+    fontFamily:
+      state.settings.fontFamily === 'geist-mono' ? 'Geist Mono, monospace'
+      : state.settings.fontFamily === 'serif'     ? 'Georgia, serif'
+      : state.settings.fontFamily === 'cursive'   ? 'cursive'
+      : 'Geist Sans, sans-serif',
+  };
+
   const toolbarGroups = [
     [
       { icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>, title: 'Undo', action: () => document.execCommand('undo') },
       { icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>, title: 'Redo', action: () => document.execCommand('redo') },
     ],
     [
-      { icon: <H1Icon />, title: 'Heading 1', action: () => insertLine('# ') },
-      { icon: <H2Icon />, title: 'Heading 2', action: () => insertLine('## ') },
-      { icon: <H3Icon />, title: 'Heading 3', action: () => insertLine('### ') },
+      { icon: <H1Icon />, title: 'Heading 1', action: () => { setEditFocused(true); setTimeout(() => { textareaRef.current?.focus(); insertLine('# '); }, 10); } },
+      { icon: <H2Icon />, title: 'Heading 2', action: () => { setEditFocused(true); setTimeout(() => { textareaRef.current?.focus(); insertLine('## '); }, 10); } },
+      { icon: <H3Icon />, title: 'Heading 3', action: () => { setEditFocused(true); setTimeout(() => { textareaRef.current?.focus(); insertLine('### '); }, 10); } },
     ],
     [
-      { icon: <Bold size={11} />,          title: 'Bold',        action: () => wrap('**') },
-      { icon: <Italic size={11} />,        title: 'Italic',      action: () => wrap('_') },
-      { icon: <Strikethrough size={11} />, title: 'Strikethrough', action: () => wrap('~~') },
-      { icon: <Code size={11} />,          title: 'Inline code', action: () => wrap('`') },
+      { icon: <Bold size={11} />,          title: 'Bold',          action: () => { setEditFocused(true); setTimeout(() => { textareaRef.current?.focus(); wrap('**'); }, 10); } },
+      { icon: <Italic size={11} />,        title: 'Italic',        action: () => { setEditFocused(true); setTimeout(() => { textareaRef.current?.focus(); wrap('_'); }, 10); } },
+      { icon: <Strikethrough size={11} />, title: 'Strikethrough', action: () => { setEditFocused(true); setTimeout(() => { textareaRef.current?.focus(); wrap('~~'); }, 10); } },
+      { icon: <Code size={11} />,          title: 'Inline code',   action: () => { setEditFocused(true); setTimeout(() => { textareaRef.current?.focus(); wrap('`'); }, 10); } },
     ],
     [
-      { icon: <List size={11} />,        title: 'Bullet list',   action: () => insertLine('- ') },
-      { icon: <ListOrdered size={11} />, title: 'Numbered list', action: () => insertLine('1. ') },
-      { icon: <Quote size={11} />,       title: 'Blockquote',    action: () => insertLine('> ') },
-      { icon: <Minus size={11} />,       title: 'Divider',       action: () => { const n = content + '\n\n---\n\n'; setContent(n); scheduleSync(title, n, tags); } },
+      { icon: <List size={11} />,        title: 'Bullet list',   action: () => { setEditFocused(true); setTimeout(() => { textareaRef.current?.focus(); insertLine('- '); }, 10); } },
+      { icon: <ListOrdered size={11} />, title: 'Numbered list', action: () => { setEditFocused(true); setTimeout(() => { textareaRef.current?.focus(); insertLine('1. '); }, 10); } },
+      { icon: <Quote size={11} />,       title: 'Blockquote',    action: () => { setEditFocused(true); setTimeout(() => { textareaRef.current?.focus(); insertLine('> '); }, 10); } },
+      { icon: <Minus size={11} />,       title: 'Divider',       action: () => {
+        const n = content + '\n\n---\n\n';
+        setContent(n);
+        scheduleSync(title, n, tags);
+      }},
     ],
     [
       { icon: <Image size={11} />, title: 'Insert image', action: () => imageInputRef.current?.click() },
@@ -418,7 +448,7 @@ export function Editor() {
       {/* ── Top bar ── */}
       <div className="editor-topbar">
         {/* Save state */}
-        <div className="save-indicator" style={{ marginRight: 'auto', gap: 5 }}>
+        <div className="save-indicator">
           {saving && (
             <>
               <div className="save-dot saving" />
@@ -438,7 +468,7 @@ export function Editor() {
           )}
           {!saving && !saved && (
             <span style={{ color: 'var(--accents-4)', opacity: 0.6, fontSize: 10, fontFamily: 'var(--font-mono)' }}>
-              Auto-save on
+              Auto-save
             </span>
           )}
 
@@ -474,16 +504,12 @@ export function Editor() {
 
         {/* Note color */}
         <div style={{ position: 'relative' }}>
-          <button
-            className="toolbar-btn"
-            onClick={() => setColorOpen((v) => !v)}
-            title="Note color"
-          >
+          <button className="toolbar-btn" onClick={() => setColorOpen((v) => !v)} title="Note color">
             <div style={{
-              width: 11, height: 11,
+              width: 12, height: 12,
               borderRadius: '50%',
               background: activeNote.color || 'transparent',
-              border: activeNote.color ? 'none' : '1px solid var(--accents-4)',
+              border: activeNote.color ? 'none' : '1.5px solid var(--accents-4)',
             }} />
           </button>
           <AnimatePresence>
@@ -524,12 +550,11 @@ export function Editor() {
           <Download size={11} />
         </button>
 
-        {/* View mode */}
+        {/* View mode — only edit and preview */}
         <div className="view-switcher">
           {([
-            { mode: 'edit'    as ViewMode, icon: <Edit2    size={10} />, title: 'Edit' },
-            { mode: 'preview' as ViewMode, icon: <Eye      size={10} />, title: 'Preview' },
-            { mode: 'split'   as ViewMode, icon: <Columns  size={10} />, title: 'Split' },
+            { mode: 'edit'    as const, icon: <Edit2  size={10} />, title: 'Edit' },
+            { mode: 'preview' as const, icon: <Eye    size={10} />, title: 'Preview' },
           ]).map((v) => (
             <button
               key={v.mode}
@@ -542,18 +567,19 @@ export function Editor() {
           ))}
         </div>
 
-        {/* Fullscreen */}
+        {/* Fullscreen — flex-shrink: 0 so never cut off */}
         <button
           className="toolbar-btn"
           onClick={() => setFullscreen((v) => !v)}
           title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+          style={{ flexShrink: 0 }}
         >
           {fullscreen ? <Minimize2 size={11} /> : <Maximize2 size={11} />}
         </button>
       </div>
 
       {/* ── Markdown toolbar ── */}
-      {(viewMode === 'edit' || viewMode === 'split') && (
+      {viewMode === 'edit' && (
         <div className="editor-toolbar">
           {toolbarGroups.map((group, gi) => (
             <React.Fragment key={gi}>
@@ -576,7 +602,7 @@ export function Editor() {
       {/* ── Title ── */}
       <div style={{
         borderBottom: '1px solid var(--accents-2)',
-        borderLeft: activeNote.color ? `2px solid ${activeNote.color}` : undefined,
+        borderLeft: activeNote.color ? `3px solid ${activeNote.color}` : undefined,
         flexShrink: 0,
       }}>
         <input
@@ -585,36 +611,64 @@ export function Editor() {
           value={title}
           onChange={handleTitleChange}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') { e.preventDefault(); textareaRef.current?.focus(); }
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              setEditFocused(true);
+              setTimeout(() => textareaRef.current?.focus(), 0);
+            }
           }}
         />
         <TagInput tags={tags} onChange={handleTagChange} />
       </div>
 
       {/* ── Content area ── */}
-      <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden' }}>
-        {/* Edit pane */}
-        {(viewMode === 'edit' || viewMode === 'split') && (
-          <div
-            style={{
-              flex: 1,
-              overflow: 'hidden',
-              position: 'relative',
-              ...(viewMode === 'split' ? { borderRight: '1px solid var(--accents-2)' } : {}),
-            }}
-          >
+      <div style={{ flex: 1, display: 'flex', minHeight: 0, overflow: 'hidden', position: 'relative' }}>
+        {/* Edit pane — WYSIWYG overlay approach */}
+        {viewMode === 'edit' && (
+          <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+            {/* Rendered overlay — shows when NOT focused */}
+            {!editFocused && (
+              <div
+                className="editor-rendered-overlay preview-prose"
+                onClick={() => {
+                  setEditFocused(true);
+                  setTimeout(() => {
+                    textareaRef.current?.focus();
+                    // Place cursor at end
+                    const len = textareaRef.current?.value.length || 0;
+                    textareaRef.current?.setSelectionRange(len, len);
+                  }, 0);
+                }}
+                style={{
+                  ...fontStyle,
+                  cursor: 'text',
+                  position: 'absolute',
+                  inset: 0,
+                  overflowY: 'auto',
+                  padding: '22px 40px 80px',
+                  zIndex: 2,
+                  background: 'var(--bg)',
+                }}
+              >
+                {content
+                  ? <Markdown remarkPlugins={[remarkGfm]}>{content}</Markdown>
+                  : <p className="empty-state" style={{ color: 'var(--accents-4)', fontStyle: 'italic' }}>Click to start writing…</p>
+                }
+              </div>
+            )}
+
+            {/* Textarea — always present below, visible when focused */}
             <textarea
               ref={textareaRef}
               className="editor-textarea"
               style={{
-                fontSize: `${state.settings.fontSize}px`,
-                lineHeight: state.settings.lineHeight,
-                fontFamily:
-                  state.settings.fontFamily === 'geist-mono' ? 'Geist Mono, monospace'
-                  : state.settings.fontFamily === 'serif'     ? 'Georgia, serif'
-                  : state.settings.fontFamily === 'cursive'   ? 'cursive'
-                  : 'Geist Sans, sans-serif',
+                ...fontStyle,
                 spellCheck: state.settings.spellCheck,
+                position: 'absolute',
+                inset: 0,
+                opacity: editFocused ? 1 : 0,
+                zIndex: editFocused ? 3 : 1,
+                pointerEvents: editFocused ? 'auto' : 'none',
               } as any}
               placeholder="Start writing… Markdown supported"
               value={content}
@@ -623,6 +677,11 @@ export function Editor() {
               onPaste={handlePaste}
               onDrop={handleDrop}
               onDragOver={(e) => e.preventDefault()}
+              onFocus={() => setEditFocused(true)}
+              onBlur={() => {
+                // Small delay to allow toolbar button clicks
+                setTimeout(() => setEditFocused(false), 150);
+              }}
               onSelect={(e) => {
                 const ta = e.target as HTMLTextAreaElement;
                 socket.sendCursorUpdate(ta.selectionStart);
@@ -632,18 +691,15 @@ export function Editor() {
         )}
 
         {/* Preview pane */}
-        {(viewMode === 'preview' || viewMode === 'split') && (
+        {viewMode === 'preview' && (
           <div style={{ flex: 1, overflow: 'hidden' }}>
             <div
               className="preview-prose"
-              style={{
-                fontSize: `${state.settings.fontSize}px`,
-                lineHeight: state.settings.lineHeight,
-              }}
+              style={{ ...fontStyle, overflowY: 'auto', height: '100%' }}
             >
               {content
                 ? <Markdown remarkPlugins={[remarkGfm]}>{content}</Markdown>
-                : <p style={{ color: 'var(--accents-4)', fontStyle: 'italic', fontSize: 13 }}>Nothing to preview yet.</p>
+                : <p style={{ color: 'var(--accents-4)', fontStyle: 'italic', fontSize: 14 }}>Nothing to preview yet.</p>
               }
             </div>
           </div>
