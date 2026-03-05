@@ -67,7 +67,7 @@ const initialState: AppState = {
   activeNoteId:      null,
   activeFolderId:    'all',
   loading:           true,
-  sidebarOpen:       false,   // ← start with home screen visible
+  sidebarOpen:       true,   // ← start with sidebar open
   searchOpen:        false,
   settingsOpen:      false,
   folderModalOpen:   false,
@@ -243,7 +243,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } else if (state.theme === 'light') {
       apply(false);
     } else {
-      // system
       const mq = window.matchMedia('(prefers-color-scheme: dark)');
       apply(mq.matches);
       const handler = (e: MediaQueryListEvent) => apply(e.matches);
@@ -256,22 +255,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     document.documentElement.style.setProperty('--accent', state.settings.accentColor);
-    // Derive lighter version for accent-bg
     document.documentElement.style.setProperty('--accent-raw', state.settings.accentColor);
   }, [state.settings.accentColor]);
 
   // ── Persist settings & theme ───────────────────────────────────────────────
 
   useEffect(() => {
-    try {
-      localStorage.setItem('cookie_settings', JSON.stringify(state.settings));
-    } catch {}
+    try { localStorage.setItem('cookie_settings', JSON.stringify(state.settings)); } catch {}
   }, [state.settings]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('cookie_theme', state.theme);
-    } catch {}
+    try { localStorage.setItem('cookie_theme', state.theme); } catch {}
   }, [state.theme]);
 
   // ── Boot: load persisted prefs, then data ──────────────────────────────────
@@ -280,7 +274,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (initialized.current) return;
     initialized.current = true;
 
-    // Restore persisted settings
     try {
       const saved = localStorage.getItem('cookie_settings');
       if (saved) dispatch({ type: 'UPDATE_SETTINGS', settings: JSON.parse(saved) });
@@ -291,7 +284,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (theme) dispatch({ type: 'SET_THEME', theme });
     } catch {}
 
-    // Load data
     loadData();
   }, []);
 
@@ -310,10 +302,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const loadData = useCallback(async () => {
     dispatch({ type: 'SET_LOADING', loading: true });
     try {
+      // FIX: api.tags is a plain function, not api.tags.list()
       const [notes, folders, tags] = await Promise.all([
         api.notes.list(),
         api.folders.list(),
-        api.tags.list(),
+        api.tags(),
       ]);
       dispatch({ type: 'SET_NOTES',   notes   });
       dispatch({ type: 'SET_FOLDERS', folders });
@@ -336,7 +329,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const note = await api.notes.create({
         title:    '',
         content:  '',
-        folderId: folderId ?? state.activeFolderId as string | null ?? null,
+        folderId: folderId ?? (state.activeFolderId as string | null) ?? null,
       });
       dispatch({ type: 'ADD_NOTE',        note });
       dispatch({ type: 'SET_ACTIVE_NOTE', id: note._id });
@@ -363,7 +356,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       await api.notes.delete(id);
     } catch (err: any) {
       dispatch({ type: 'SET_ERROR', error: err?.message ?? 'Failed to delete note' });
-      // reload to restore
       const notes = await api.notes.list().catch(() => []);
       dispatch({ type: 'SET_NOTES', notes });
     }
@@ -420,18 +412,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
-      if (mod && e.key === '\\') {
-        e.preventDefault();
-        dispatch({ type: 'TOGGLE_SIDEBAR' });
-      }
-      if (mod && e.key === 'k') {
-        e.preventDefault();
-        dispatch({ type: 'SET_SEARCH_OPEN', open: true });
-      }
-      if (mod && e.key === ',') {
-        e.preventDefault();
-        dispatch({ type: 'SET_SETTINGS_OPEN', open: true });
-      }
+      if (mod && e.key === '\\') { e.preventDefault(); dispatch({ type: 'TOGGLE_SIDEBAR' }); }
+      if (mod && e.key === 'k')  { e.preventDefault(); dispatch({ type: 'SET_SEARCH_OPEN', open: true }); }
+      if (mod && e.key === ',')  { e.preventDefault(); dispatch({ type: 'SET_SETTINGS_OPEN', open: true }); }
       if (e.key === 'Escape') {
         dispatch({ type: 'SET_SEARCH_OPEN',   open: false });
         dispatch({ type: 'SET_SETTINGS_OPEN', open: false });
@@ -444,16 +427,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value: AppContextValue = {
-    state,
-    dispatch,
-    activeNote,
-    createNote,
-    updateNote,
-    deleteNote,
-    createFolder,
-    updateFolder,
-    deleteFolder,
-    moveNote,
+    state, dispatch, activeNote,
+    createNote, updateNote, deleteNote,
+    createFolder, updateFolder, deleteFolder, moveNote,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
