@@ -43,7 +43,8 @@ function AppInner() {
     <div className="app-layout">
       <Header />
 
-      <div className="sidebar" style={{ gridRow: 2, gridColumn: 1 }}>
+      {/* Sidebar — renders inside grid column 1 row 2 */}
+      <div style={{ gridRow: 2, gridColumn: 1, display: 'flex', minWidth: 0 }}>
         <Sidebar />
       </div>
 
@@ -56,21 +57,6 @@ function AppInner() {
         {state.folderModalOpen && <FolderModal key="folder" />}
         {state.moveNoteOpen    && <MoveNoteModal key="move" />}
         {state.settingsOpen    && <SettingsModal key="settings" />}
-      </AnimatePresence>
-
-      {/* Mobile sidebar overlay */}
-      <AnimatePresence>
-        {state.sidebarOpen && typeof window !== 'undefined' && window.innerWidth < 768 && (
-          <motion.div
-            key="overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 md:hidden"
-            style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)' }}
-            onClick={() => dispatch({ type: 'SET_SIDEBAR', open: false })}
-          />
-        )}
       </AnimatePresence>
     </div>
   );

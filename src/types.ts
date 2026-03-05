@@ -1,6 +1,6 @@
 // ─── Primitives ───────────────────────────────────────────────────────────────
 
-export type ViewMode   = 'edit' | 'preview';          // 'split' removed
+export type ViewMode   = 'edit' | 'preview';
 export type Theme      = 'dark' | 'light' | 'system';
 export type SortKey    = 'updatedAt' | 'createdAt' | 'title' | 'wordCount';
 export type FontFamily = 'geist-sans' | 'geist-mono' | 'serif' | 'cursive';
@@ -31,7 +31,6 @@ export interface Folder {
 }
 
 export interface Tag {
-  _id:   string;
   name:  string;
   count: number;
 }
@@ -42,10 +41,35 @@ export interface Collaborator {
   color:    string;
 }
 
+export interface SearchResult {
+  _id:       string;
+  title:     string;
+  content:   string;
+  snippet:   string;
+  folderId:  string | null;
+  tags:      string[];
+  isPinned:  boolean;
+  wordCount: number;
+  updatedAt: string;
+  createdAt: string;
+}
+
+export interface Stats {
+  noteCount:   number;
+  folderCount: number;
+  pinnedCount: number;
+  totalWords:  number;
+  totalChars:  number;
+}
+
+export interface WsMessage {
+  type: string;
+  [key: string]: any;
+}
+
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
 export interface Settings {
-  // Editor
   fontSize:      number;
   lineHeight:    number;
   fontFamily:    FontFamily;
@@ -53,10 +77,8 @@ export interface Settings {
   spellCheck:    boolean;
   defaultView:   ViewMode;
   autosaveDelay: number;
-  showWordCount: boolean;   // kept for Editor compatibility; not exposed in UI toggle
-
-  // Appearance
-  accentColor: string;
+  showWordCount: boolean;
+  accentColor:   string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -68,8 +90,7 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultView:   'edit',
   autosaveDelay: 1500,
   showWordCount: true,
-
-  accentColor:   '#d97706',   // warm amber — matches diary theme
+  accentColor:   '#d97706',
 };
 
 // ─── API payloads ─────────────────────────────────────────────────────────────
