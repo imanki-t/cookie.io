@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Pin, Folder, FolderPlus, MoreHorizontal, Trash2,
-  Edit2, Move, ChevronRight, ChevronDown, Tag, Search,
+  Edit2, Move, ChevronRight, ChevronDown, Tag,
   SortAsc, SortDesc, FileText, Plus,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -107,8 +107,7 @@ function NoteRow({ note }: { note: Note }) {
         </div>
       </button>
 
-      {/* Kebab — always visible on touch via CSS, hover-only on pointer devices */}
-      <div style={{ position: 'relative', flexShrink: 0 }}>
+      <div style={{ position: 'relative', flexShrink: 0, alignSelf: 'center' }}>
         <button
           className="kebab-btn"
           onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); }}
@@ -162,8 +161,8 @@ function FolderRow({ folderId }: { folderId: string }) {
           aria-label={expanded ? 'Collapse' : 'Expand'}
         >
           {expanded
-            ? <ChevronDown size={11} style={{ color: 'var(--accents-4)' }} />
-            : <ChevronRight size={11} style={{ color: 'var(--accents-4)' }} />
+            ? <ChevronDown size={11} />
+            : <ChevronRight size={11} />
           }
         </button>
 
@@ -181,7 +180,6 @@ function FolderRow({ folderId }: { folderId: string }) {
           )}
         </button>
 
-        {/* Folder kebab */}
         <div style={{ position: 'relative', flexShrink: 0 }}>
           <button
             className="kebab-btn"
@@ -224,7 +222,6 @@ function FolderRow({ folderId }: { folderId: string }) {
         </div>
       </div>
 
-      {/* Notes inside folder */}
       <AnimatePresence>
         {expanded && folderNotes.length > 0 && (
           <motion.div
@@ -293,27 +290,23 @@ export function Sidebar() {
 
   const { notes, folders, activeFolderId, sortKey, sortDir, sidebarOpen } = state;
 
-  // Derive filtered + sorted notes
   const visibleNotes = React.useMemo(() => {
     let list = [...notes];
 
-    // Filter by view
     if (activeFolderId === 'pinned') {
       list = list.filter((n) => n.isPinned);
     } else if (activeFolderId === 'all') {
-      // all notes — no folder filter
+      // all notes
     } else if (activeFolderId) {
       list = list.filter((n) => n.folderId === activeFolderId);
     } else {
       list = list.filter((n) => n.folderId === null);
     }
 
-    // Tag filter
     if (tagFilter) {
       list = list.filter((n) => n.tags.includes(tagFilter));
     }
 
-    // Sort
     list.sort((a, b) => {
       let cmp = 0;
       switch (sortKey) {
@@ -325,7 +318,6 @@ export function Sidebar() {
       return sortDir === 'asc' ? cmp : -cmp;
     });
 
-    // Pinned always first (unless viewing pinned section)
     if (activeFolderId !== 'pinned') {
       list.sort((a, b) => Number(b.isPinned) - Number(a.isPinned));
     }
@@ -333,12 +325,9 @@ export function Sidebar() {
     return list;
   }, [notes, activeFolderId, tagFilter, sortKey, sortDir]);
 
-  const rootFolders    = folders.filter((f) => !f.parentId);
-  const unfiledNotes   = activeFolderId === 'all'
-    ? []
-    : visibleNotes.filter((n) => !n.folderId && activeFolderId === 'all');
-  const allTags        = Array.from(new Set(notes.flatMap((n) => n.tags))).sort();
-  const pinnedCount    = notes.filter((n) => n.isPinned).length;
+  const rootFolders  = folders.filter((f) => !f.parentId);
+  const allTags      = Array.from(new Set(notes.flatMap((n) => n.tags))).sort();
+  const pinnedCount  = notes.filter((n) => n.isPinned).length;
 
   return (
     <AnimatePresence>
@@ -354,16 +343,16 @@ export function Sidebar() {
             onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
           />
 
+          {/* FIX: use sidebar-panel (has CSS) instead of sidebar */}
           <motion.aside
-            className="sidebar"
-            initial={{ x: -260, opacity: 0 }}
+            className="sidebar-panel"
+            initial={{ x: -280, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -260, opacity: 0 }}
+            exit={{ x: -280, opacity: 0 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
           >
             {/* ── Top nav ── */}
             <div className="sidebar-nav">
-              {/* All notes */}
               <button
                 className={`sidebar-nav-btn ${activeFolderId === 'all' ? 'active' : ''}`}
                 onClick={() => { dispatch({ type: 'SET_ACTIVE_FOLDER', id: 'all' }); setTagFilter(null); }}
@@ -373,7 +362,6 @@ export function Sidebar() {
                 <span className="nav-count">{notes.length}</span>
               </button>
 
-              {/* Pinned */}
               {pinnedCount > 0 && (
                 <button
                   className={`sidebar-nav-btn ${activeFolderId === 'pinned' ? 'active' : ''}`}
@@ -395,13 +383,11 @@ export function Sidebar() {
                 className="sidebar-icon-btn"
                 onClick={() => dispatch({ type: 'SET_FOLDER_MODAL', open: true, folder: null })}
                 title="New folder"
-                aria-label="New folder"
               >
                 <FolderPlus size={13} />
               </button>
             </div>
 
-            {/* ── Folder list ── */}
             <div className="sidebar-folders">
               {rootFolders.length === 0 ? (
                 <p className="sidebar-empty-hint">No folders yet</p>
@@ -421,8 +407,8 @@ export function Sidebar() {
                     <button
                       className="sidebar-icon-btn"
                       onClick={() => setTagFilter(null)}
-                      title="Clear tag filter"
                       style={{ fontSize: 10, color: 'var(--accent)' }}
+                      title="Clear tag filter"
                     >
                       ✕
                     </button>
@@ -455,9 +441,14 @@ export function Sidebar() {
               </span>
               <button
                 className="sidebar-icon-btn"
-                onClick={() => createNote(typeof activeFolderId === 'string' && activeFolderId !== 'all' && activeFolderId !== 'pinned' ? activeFolderId : null)}
+                onClick={() => createNote(
+                  typeof activeFolderId === 'string' &&
+                  activeFolderId !== 'all' &&
+                  activeFolderId !== 'pinned'
+                    ? activeFolderId
+                    : null
+                )}
                 title="New note"
-                aria-label="New note"
               >
                 <Plus size={13} />
               </button>
@@ -470,11 +461,17 @@ export function Sidebar() {
             <div className="sidebar-notes">
               {visibleNotes.length === 0 ? (
                 <div className="sidebar-empty">
-                  <FileText size={24} style={{ color: 'var(--accents-3)', marginBottom: 8 }} />
+                  <FileText size={24} style={{ color: 'var(--accents-3)' }} />
                   <p>No notes here</p>
                   <button
                     className="sidebar-empty-cta"
-                    onClick={() => createNote(typeof activeFolderId === 'string' && activeFolderId !== 'all' && activeFolderId !== 'pinned' ? activeFolderId : null)}
+                    onClick={() => createNote(
+                      typeof activeFolderId === 'string' &&
+                      activeFolderId !== 'all' &&
+                      activeFolderId !== 'pinned'
+                        ? activeFolderId
+                        : null
+                    )}
                   >
                     Create one
                   </button>
