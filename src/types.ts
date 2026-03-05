@@ -1,92 +1,119 @@
-export interface Folder {
-  _id: string;
-  name: string;
-  parentId: string | null;
-  color: string;
-  icon: string;
-  order: number;
-  createdAt: string;
-  updatedAt: string;
-}
+// ─── Primitives ───────────────────────────────────────────────────────────────
+
+export type ViewMode   = 'edit' | 'preview';          // 'split' removed
+export type Theme      = 'dark' | 'light' | 'system';
+export type SortKey    = 'updatedAt' | 'createdAt' | 'title' | 'wordCount';
+export type FontFamily = 'geist-sans' | 'geist-mono' | 'serif' | 'cursive';
+
+// ─── Domain models ────────────────────────────────────────────────────────────
 
 export interface Note {
-  _id: string;
-  title: string;
-  content: string;
-  folderId: string | null;
-  tags: string[];
-  isPinned: boolean;
-  color: string | null;
-  wordCount: number;
-  charCount: number;
-  order: number;
+  _id:        string;
+  title:      string;
+  content:    string;
+  folderId:   string | null;
+  tags:       string[];
+  color:      string | null;
+  isPinned:   boolean;
+  wordCount:  number;
+  createdAt:  string;
+  updatedAt:  string;
+}
+
+export interface Folder {
+  _id:      string;
+  name:     string;
+  color:    string;
+  parentId: string | null;
+  noteCount?: number;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface SearchResult extends Note {
-  snippet: string;
-}
-
-export interface Collaborator {
-  userId: string;
-  userName: string;
-  color: string;
 }
 
 export interface Tag {
-  name: string;
+  _id:   string;
+  name:  string;
   count: number;
 }
 
-export interface Stats {
-  noteCount: number;
-  folderCount: number;
-  pinnedCount: number;
-  totalWords: number;
-  totalChars: number;
+export interface Collaborator {
+  userId:   string;
+  userName: string;
+  color:    string;
 }
 
-export type Theme = 'system' | 'light' | 'dark';
-export type FontFamily = 'geist-sans' | 'geist-mono' | 'serif' | 'cursive';
-export type SortKey = 'updatedAt' | 'createdAt' | 'title' | 'wordCount';
-export type ViewMode = 'edit' | 'preview' | 'split';
+// ─── Settings ─────────────────────────────────────────────────────────────────
 
 export interface Settings {
-  fontSize: number;
-  fontFamily: FontFamily;
-  lineHeight: number;
-  spellCheck: boolean;
+  // Editor
+  fontSize:      number;
+  lineHeight:    number;
+  fontFamily:    FontFamily;
+  tabSize:       number;
+  spellCheck:    boolean;
+  defaultView:   ViewMode;
   autosaveDelay: number;
-  defaultView: ViewMode;
+  showWordCount: boolean;   // kept for Editor compatibility; not exposed in UI toggle
+
+  // Appearance
   accentColor: string;
-  showWordCount: boolean;
-  showLineNumbers: boolean;
-  tabSize: number;
-  userName: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  fontSize: 15,
-  fontFamily: 'geist-sans',
-  lineHeight: 1.7,
-  spellCheck: true,
+  fontSize:      14,
+  lineHeight:    1.7,
+  fontFamily:    'geist-sans',
+  tabSize:       2,
+  spellCheck:    true,
+  defaultView:   'edit',
   autosaveDelay: 1500,
-  defaultView: 'edit',
-  accentColor: '#f59e0b',
   showWordCount: true,
-  showLineNumbers: false,
-  tabSize: 2,
-  userName: 'Anonymous',
+
+  accentColor:   '#d97706',   // warm amber — matches diary theme
 };
 
-export type WsMessage =
-  | { type: 'join_note'; noteId: string; userId: string; userName: string }
-  | { type: 'leave_note' }
-  | { type: 'note_update'; title: string; content: string; tags: string[] }
-  | { type: 'cursor_update'; position: number }
-  | { type: 'room_joined'; userId: string; color: string; users: Collaborator[] }
-  | { type: 'user_joined'; user: Collaborator; users: Collaborator[] }
-  | { type: 'user_left'; userId: string; users: Collaborator[] }
-  | { type: 'note_update'; noteId: string; title: string; content: string; tags: string[]; userId: string }
-  | { type: 'cursor_update'; userId: string; userName: string; color: string; position: number };
+// ─── API payloads ─────────────────────────────────────────────────────────────
+
+export interface CreateNotePayload {
+  title?:    string;
+  content?:  string;
+  folderId?: string | null;
+  tags?:     string[];
+  color?:    string | null;
+}
+
+export interface UpdateNotePayload {
+  title?:     string;
+  content?:   string;
+  folderId?:  string | null;
+  tags?:      string[];
+  color?:     string | null;
+  isPinned?:  boolean;
+  wordCount?: number;
+}
+
+export interface CreateFolderPayload {
+  name:      string;
+  color:     string;
+  parentId?: string | null;
+}
+
+export interface UpdateFolderPayload {
+  name?:     string;
+  color?:    string;
+  parentId?: string | null;
+}
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+
+export interface User {
+  _id:         string;
+  username:    string;
+  displayName: string;
+  createdAt:   string;
+}
+
+export interface AuthResponse {
+  token: string;
+  user:  User;
+}
